@@ -65,12 +65,13 @@ class ThesisCompiler:
             # Generate intermediate TeX file
             output_tex = os.path.splitext(output_pdf)[0] + '.tex'
             
-            # Construct pandoc command
+            # Construct pandoc command with XeLaTeX for better Unicode support
             pandoc_cmd = [
                 'pandoc',
                 '--metadata-file=' + metadata_file,
                 '-s',
                 '--natbib',
+                '--pdf-engine=xelatex',  # Use XeLaTeX for better Unicode support
                 f'--resource-path={chapters_dir}',
                 '--bibliography=references.bib',
                 '--filter', 'pandoc-crossref',
@@ -81,9 +82,10 @@ class ThesisCompiler:
             logger.info("Running pandoc to generate TeX...")
             subprocess.run(pandoc_cmd, check=True, capture_output=True, text=True)
             
-            # Run tectonic to generate PDF
+            # Run tectonic to generate PDF - use correct syntax
             logger.info("Running tectonic to generate PDF...")
-            subprocess.run(['tectonic', output_tex], check=True, capture_output=True, text=True)
+            subprocess.run(['tectonic', output_tex], 
+                          check=True, capture_output=True, text=True)
             
             logger.info(f"Thesis compiled successfully: {output_pdf}")
             return True

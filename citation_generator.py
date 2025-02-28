@@ -120,7 +120,6 @@ class CitationGenerator:
                 chapter_text = f.read()
                 
             citation_data = self._analyze_citations(chapter_text)
-            print(citation_data)
             logger.info(f"Analyzed citations for {os.path.basename(chapter_path)}")
             return citation_data
             
@@ -244,24 +243,58 @@ class CitationGenerator:
             Dictionary containing paper details or None if fetch fails
         """
         try:
-            handle = Entrez.efetch(db="pubmed", id=pmid, retmode="xml")
-            record = Entrez.read(handle)
+            from Bio import Medline
+            handle = Entrez.efetch(db="pubmed", id=pmid, rettype="medline", retmode="text")
+            records = list(Medline.parse(handle))
             handle.close()
             
-            article = record["PubmedArticle"][0]["MedlineCitation"]["Article"]
-            authors = [
-                f"{a.get('LastName', '')}, {a.get('Initials', '')}"
-                for a in article.get("AuthorList", [])
-            ]
+            if not records:
+                logger.warning(f"No records found for PMID {pmid}")
+                return None
+                
+            record = records[0]  # Get the first record
+            
+            # Extract authors in "LastName, Initials" format
+            authors = []
+            if "AU" in record:
+                for author in record.get("AU", []):
+                    # Authors in Medline format are already "LastName Initials"
+                    # Convert to "LastName, Initials" format
+                    parts = author.split()
+                    if len(parts) > 1:
+                        lastname = parts[0]
+                        initials = " ".join(parts[1:])
+                        authors.append(f"{lastname}, {initials}")
+                    else:
+                        authors.append(author)
+            
+            # Get publication year from the date
+            year = "Unknown"
+            if "DP" in record:
+                # Date format is typically "YYYY Mon DD" or "YYYY"
+                date_parts = record.get("DP", "").split()
+                if date_parts and date_parts[0].isdigit():
+                    year = date_parts[0]
+            
+            # Get DOI if available
+            doi = "Not available"
+            if "LID" in record:
+                lid = record.get("LID", "")
+                if "[doi]" in lid:
+                    doi = lid.split(" [doi]")[0]
+            elif "AID" in record:
+                for aid in record.get("AID", []):
+                    if "[doi]" in aid:
+                        doi = aid.split(" [doi]")[0]
+                        break
             
             return {
                 "pmid": pmid,
-                "title": article.get("ArticleTitle", "No title"),
+                "title": record.get("TI", "No title"),
                 "authors": authors,
-                "journal": article.get("Journal", {}).get("Title", "Unknown Journal"),
-                "year": article.get("Journal", {}).get("JournalIssue", {}).get("PubDate", {}).get("Year", "Unknown"),
-                "doi": next((id for id in record["PubmedArticle"][0].get("ArticleIdList", []) 
-                           if id.attributes["IdType"] == "doi"), "Not available")
+                "journal": record.get("TA", "Unknown Journal"),
+                "year": year,
+                "doi": doi
             }
         except Exception as e:
             logger.error(f"Error fetching PMID {pmid}: {e}")
@@ -279,9 +312,20 @@ class CitationGenerator:
         """
         bibtex_entries = []
         citation_keys = {}
+        used_keys = set()  # Track used keys to prevent duplicates
         
         for paper in papers:
             key = self._generate_bibtex_key(paper)
+            
+            # Ensure key is unique
+            base_key = key
+            counter = 1
+            while key in used_keys:
+                key = f"{base_key}{counter}"
+                counter += 1
+            
+            used_keys.add(key)
+            
             entry = self._format_bibtex_entry(key, paper)
             bibtex_entries.append(entry)
             
@@ -290,7 +334,7 @@ class CitationGenerator:
                 if paper["sentence"] not in citation_keys:
                     citation_keys[paper["sentence"]] = []
                 citation_keys[paper["sentence"]].append(key)
-            
+        
         with open(output_file, "w", encoding="utf-8") as f:
             f.write("\n\n".join(bibtex_entries))
             
@@ -307,10 +351,19 @@ class CitationGenerator:
             BibTeX key string
         """
         if paper["authors"]:
+            # Get first author's last name
             first_author = paper["authors"][0].split(",")[0].lower()
+            
+            # Normalize to ASCII - replace accented characters with ASCII equivalents
+            import unicodedata
+            first_author = unicodedata.normalize('NFKD', first_author)
+            first_author = ''.join([c for c in first_author if not unicodedata.combining(c)])
+            
             key = f"{first_author}{paper['year']}"
         else:
             key = f"pmid{paper['pmid']}{paper['year']}"
+            
+        # Ensure key only contains valid characters
         return re.sub(r'[^a-z0-9]', '', key)
         
     def _format_bibtex_entry(self, key: str, paper: Dict) -> str:
@@ -323,11 +376,35 @@ class CitationGenerator:
         Returns:
             Formatted BibTeX entry string
         """
-        author_str = " and ".join([a.strip() for a in paper["authors"] if a.strip()]) or "Unknown Author"
+        # Handle author list - limit to 5 authors for very long lists
+        authors = [a.strip() for a in paper["authors"] if a.strip()]
+        if len(authors) > 10:
+            author_str = " and ".join(authors[:5]) + " and others"
+        else:
+            author_str = " and ".join(authors) or "Unknown Author"
+        
+        # Remove HTML/XML tags from title
+        title = re.sub(r'<[^>]+>', '', paper['title'])
         
         # Escape special characters in title and journal
-        title = paper['title'].replace("&", "\\&")
-        journal = paper['journal'].replace("&", "\\&")
+        title = (title.replace("&", "\\&")
+                     .replace("%", "\\%")
+                     .replace("$", "\\$")
+                     .replace("#", "\\#")
+                     .replace("_", "\\_")
+                     .replace("{", "\\{")
+                     .replace("}", "\\}")
+                     .replace("~", "\\textasciitilde")
+                     .replace("^", "\\textasciicircum")
+                     .replace("\\", "\\textbackslash"))
+        
+        journal = (paper['journal'].replace("&", "\\&")
+                                  .replace("%", "\\%")
+                                  .replace("$", "\\$")
+                                  .replace("#", "\\#")
+                                  .replace("_", "\\_")
+                                  .replace("{", "\\{")
+                                  .replace("}", "\\}"))
         
         doi_field = f"  doi = {{{paper['doi']}}},\n" if paper['doi'] != "Not available" else ""
         

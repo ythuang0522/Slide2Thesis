@@ -4,7 +4,7 @@
 """
 1. Install required libraries:
    pip install -q -U google-genai
-   pip install pillow PyMuPDF tenacity biopython
+   pip install pillow PyMuPDF tenacity biopython flask
    conda install -c conda-forge pandoc
    conda install tectonic
    brew install pandoc-crossref
@@ -39,6 +39,146 @@ def setup_debug_folder(pdf_path: str) -> str:
     os.makedirs(debug_folder, exist_ok=True)
     return debug_folder
 
+def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=False, 
+             categorize_pages=False, generate_chapters=False, add_citations=False, 
+             add_figures=False, generate_yaml=False, compile_thesis=False):
+    """Process a PDF file and return the path to the debug folder."""
+    # Validate PDF file
+    if not os.path.exists(pdf_file):
+        logger.error(f"PDF file not found: {pdf_file}")
+        raise FileNotFoundError(f"PDF file not found: {pdf_file}")
+
+    # Set up paths
+    debug_folder = setup_debug_folder(pdf_file)
+    extracted_text_file = os.path.join(debug_folder, "extracted_text.txt")
+    metadata_file = os.path.join(debug_folder, "thesis_metadata.yaml")
+    output_pdf = os.path.join(debug_folder, "thesis.pdf")
+
+    # Use provided API key or get from environment
+    api_key = api_key or os.getenv('GEMINI_API_KEY')
+    if not api_key:
+        logger.error("No API key provided")
+        raise ValueError("No API key provided")
+    
+    # Get email for PubMed API
+    email = email or os.getenv('PUBMED_EMAIL')
+    if not email:
+        logger.error("No email provided for PubMed API")
+        raise ValueError("No email provided for PubMed API")
+    
+    gemini_api = GeminiAPI(api_key=api_key)
+
+    # Run all steps
+    if run_all:
+        logger.info("Step 1: Extracting text from PDF...")
+        extractor = TextExtractor(pdf_file, gemini_api)
+        extracted_data = extractor.extract_text(extracted_text_file)
+        if not extracted_data:
+            logger.error("Text extraction failed")
+            raise RuntimeError("Text extraction failed")
+
+        logger.info("Step 2: Categorizing pages...")
+        classifier = PageClassifier(gemini_api)
+        categorized_content = classifier.classify_pages(extracted_text_file, debug_folder)
+        if not categorized_content:
+            logger.error("Page categorization failed")
+            raise RuntimeError("Page categorization failed")
+
+        logger.info("Step 3: Generating chapters...")
+        generator = ChapterGenerator(gemini_api)
+        generated_chapters = generator.generate_all_chapters(debug_folder)
+        if not generated_chapters:
+            logger.error("Chapter generation failed")
+            raise RuntimeError("Chapter generation failed")
+
+        logger.info("Step 4: Adding citations to chapters...")
+        citation_gen = CitationGenerator(gemini_api, email)
+        if not citation_gen.process_chapters(debug_folder):
+            logger.error("Citation generation failed")
+            raise RuntimeError("Citation generation failed")
+
+        logger.info("Step 5: Adding figure references to chapters...")
+        figure_gen = FigureGenerator(gemini_api)
+        if not figure_gen.process_chapters(debug_folder):
+            logger.error("Figure reference generation failed")
+            raise RuntimeError("Figure reference generation failed")
+
+        logger.info("Step 6: Generating YAML metadata...")
+        metadata_gen = YamlMetadataGenerator(gemini_api)
+        if not metadata_gen.generate_metadata(debug_folder, metadata_file):
+            logger.error("YAML metadata generation failed")
+            raise RuntimeError("YAML metadata generation failed")
+
+        logger.info("Step 7: Compiling thesis...")
+        compiler = ThesisCompiler()
+        if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf):
+            logger.error("Thesis compilation failed")
+            raise RuntimeError("Thesis compilation failed")
+
+        logger.info("All steps completed successfully!")
+    else:
+        # Run individual steps based on flags
+        if extract_text:
+            logger.info("Step 1: Extracting text from PDF...")
+            extractor = TextExtractor(pdf_file, gemini_api)
+            extracted_data = extractor.extract_text(extracted_text_file)
+            if not extracted_data:
+                logger.error("Text extraction failed")
+                raise RuntimeError("Text extraction failed")
+            logger.info("Text extraction completed successfully!")
+            
+        if categorize_pages:
+            logger.info("Step 2: Categorizing pages...")
+            classifier = PageClassifier(gemini_api)
+            categorized_content = classifier.classify_pages(extracted_text_file, debug_folder)
+            if not categorized_content:
+                logger.error("Page categorization failed")
+                raise RuntimeError("Page categorization failed")
+            logger.info("Page categorization completed successfully!")
+            
+        if generate_chapters:
+            logger.info("Step 3: Generating chapters...")
+            generator = ChapterGenerator(gemini_api)
+            generated_chapters = generator.generate_all_chapters(debug_folder)
+            if not generated_chapters:
+                logger.error("Chapter generation failed")
+                raise RuntimeError("Chapter generation failed")
+            logger.info("Chapter generation completed successfully!")
+            
+        if add_citations:
+            logger.info("Step 4: Adding citations to chapters...")
+            citation_gen = CitationGenerator(gemini_api, email)
+            if not citation_gen.process_chapters(debug_folder):
+                logger.error("Citation generation failed")
+                raise RuntimeError("Citation generation failed")
+            logger.info("Citation generation completed successfully!")
+            
+        if add_figures:
+            logger.info("Step 5: Adding figure references to chapters...")
+            figure_gen = FigureGenerator(gemini_api)
+            if not figure_gen.process_chapters(debug_folder):
+                logger.error("Figure reference generation failed")
+                raise RuntimeError("Figure reference generation failed")
+            logger.info("Figure reference generation completed successfully!")
+            
+        if generate_yaml:
+            logger.info("Step 6: Generating YAML metadata...")
+            metadata_gen = YamlMetadataGenerator(gemini_api)
+            if not metadata_gen.generate_metadata(debug_folder, metadata_file):
+                logger.error("YAML metadata generation failed")
+                raise RuntimeError("YAML metadata generation failed")
+            logger.info("YAML metadata generation completed successfully!")
+            
+        if compile_thesis:
+            logger.info("Step 7: Compiling thesis...")
+            compiler = ThesisCompiler()
+            if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf):
+                logger.error("Thesis compilation failed")
+                raise RuntimeError("Thesis compilation failed")
+            logger.info("Thesis compilation completed successfully!")
+    
+    return debug_folder
+
 def main():
     """Main function to orchestrate the thesis generation process."""
     # Load environment variables
@@ -57,92 +197,29 @@ def main():
     parser.add_argument('--compile', action='store_true', help='Compile thesis PDF')
     args = parser.parse_args()
 
-    # Validate PDF file
-    if not os.path.exists(args.pdf_file):
-        logger.error(f"PDF file not found: {args.pdf_file}")
-        return
-
-    # Set up paths
-    debug_folder = setup_debug_folder(args.pdf_file)
-    extracted_text_file = os.path.join(debug_folder, "extracted_text.txt")
-    metadata_file = os.path.join(debug_folder, "thesis_metadata.yaml")
-    output_pdf = os.path.join(debug_folder, "thesis.pdf")
-
-    # Initialize Gemini API with priority for command line argument
-    api_key = args.api_key or os.getenv('GEMINI_API_KEY')
-    if not api_key:
-        logger.error("No API key provided. Set GEMINI_API_KEY in .env or use --api-key argument")
-        return
-    
-    # Get email for PubMed API
-    email = args.email or os.getenv('PUBMED_EMAIL')
-    if not email and (args.add_citations or args.add_figures or args.generate_yaml or args.compile):
-        logger.error("No email provided for PubMed API. Set PUBMED_EMAIL in .env or use --email argument")
-        return
-    
-    gemini_api = GeminiAPI(api_key=api_key)
-
     # Check if we should run all steps
     run_all = not any([args.extract_text, args.categorize_pages, args.generate_chapters, 
                       args.add_citations, args.add_figures, args.generate_yaml, args.compile])
     
-    # Run requested steps
-    if args.extract_text or run_all:
-        logger.info("Step 1: Extracting text from PDF...")
-        extractor = TextExtractor(args.pdf_file, gemini_api)
-        extracted_data = extractor.extract_text(extracted_text_file)
-        if not extracted_data:
-            logger.error("Text extraction failed")
-            return
-
-    if args.categorize_pages or run_all:
-        logger.info("Step 2: Categorizing pages...")
-        classifier = PageClassifier(gemini_api)
-        categorized_content = classifier.classify_pages(extracted_text_file, debug_folder)
-        if not categorized_content:
-            logger.error("Page categorization failed")
-            return
-
-    if args.generate_chapters or run_all:
-        logger.info("Step 3: Generating chapters...")
-        generator = ChapterGenerator(gemini_api)
-        generated_chapters = generator.generate_all_chapters(debug_folder)
-        if not generated_chapters:
-            logger.error("Chapter generation failed")
-            return
-
-    if args.add_citations or run_all:
-        logger.info("Step 4: Adding citations to chapters...")
-        citation_gen = CitationGenerator(gemini_api, email)
-        if not citation_gen.process_chapters(debug_folder):
-            logger.error("Citation generation failed")
-            return
-
-    if args.add_figures or run_all:
-        logger.info("Step 5: Adding figure references to chapters...")
-        figure_gen = FigureGenerator(gemini_api)
-        if not figure_gen.process_chapters(debug_folder):
-            logger.error("Figure reference generation failed")
-            return
-
-    if args.generate_yaml or run_all:
-        logger.info("Step 6: Generating YAML metadata...")
-        metadata_gen = YamlMetadataGenerator(gemini_api)
-        if not metadata_gen.generate_metadata(debug_folder, metadata_file):
-            logger.error("YAML metadata generation failed")
-            return
-
-    if args.compile or run_all:
-        logger.info("Step 7: Compiling thesis...")
-        compiler = ThesisCompiler()
-        if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf):
-            logger.error("Thesis compilation failed")
-            return
-
-    if run_all:
-        logger.info("All steps completed successfully!")
-    else:
-        logger.info("Requested steps completed successfully!")
+    try:
+        process_pdf(
+            pdf_file=args.pdf_file, 
+            api_key=args.api_key, 
+            email=args.email, 
+            run_all=run_all,
+            extract_text=args.extract_text,
+            categorize_pages=args.categorize_pages,
+            generate_chapters=args.generate_chapters,
+            add_citations=args.add_citations,
+            add_figures=args.add_figures,
+            generate_yaml=args.generate_yaml,
+            compile_thesis=args.compile
+        )
+    except Exception as e:
+        logger.error(f"Error processing PDF: {str(e)}")
+        return 1
+    
+    return 0
 
 if __name__ == "__main__":
     main() 

@@ -20,6 +20,24 @@ var/
 .installed.cfg
 *.egg
 
+# Virtual Environment
+venv/
+ENV/
+
+# Flask
+instance/
+.webassets-cache
+
+# Project specific
+uploads/
+results/
+*_debug/
+.env
+
+# OS specific
+.DS_Store
+Thumbs.db
+
 # Environment variables
 .env
 

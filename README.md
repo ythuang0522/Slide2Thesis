@@ -1,41 +1,49 @@
 # Slide2Thesis
 
-Slide2Thesis is a tool that automatically generates a thesis document from a PDF presentation. It uses Google's Gemini API to extract, analyze, and transform presentation content into a structured academic thesis.
+A tool that automatically generates a thesis document from a PDF presentation using Google's Gemini API.
 
 ## Features
 
-- Extract text and images from PDF presentations
-- Classify presentation pages into logical sections
-- Generate well-structured thesis chapters
-- Add relevant citations from PubMed
-- Include figure references
-- Generate YAML metadata for thesis formatting
-- Compile the final thesis as a PDF document
+- Extract text and images from PDF slides
+- Categorize slides into logical sections
+- Generate thesis chapters from slide content
+- Add citations and references
+- Generate figures and tables
+- Compile a complete thesis document in PDF format
+- Web interface for easy uploading and processing
 
 ## Installation
 
 1. Clone this repository:
-```bash
-git clone https://github.com/ythuang0522/Slide2Thesis.git
-cd Slide2Thesis
-```
+   ```
+   git clone https://github.com/ythuang0522/Slide2Thesis.git
+   cd Slide2Thesis
+   ```
 
-2. Install required dependencies:
-```bash
-pip install -r requirements.txt
-conda install -c conda-forge pandoc
-conda install tectonic
-brew install pandoc-crossref
-```
+2. Install required libraries:
+   ```
+   pip install -r requirements.txt
+   ```
 
-3. Set up environment variables:
-Create a `.env` file with your API keys:
-```
-GEMINI_API_KEY=your_gemini_api_key
-PUBMED_EMAIL=your_email@example.com
-```
+3. Install additional dependencies:
+   ```
+   conda install -c conda-forge pandoc
+   conda install tectonic
+   brew install pandoc-crossref  # For macOS
+   ```
 
 ## Usage
+
+### Web Interface
+
+Start the web server:
+```bash
+python app.py
+```
+
+Then open your browser and navigate to http://127.0.0.1:5000 to access the web interface.
+
+### Command Line Interface
 
 Basic usage:
 ```bash
@@ -60,6 +68,8 @@ python main.py path/to/your/presentation.pdf --compile
 ## Project Structure
 
 - `main.py`: Main script orchestrating the thesis generation process
+- `app.py`: Flask web application for the web interface
+- `templates/`: HTML templates for the web interface
 - `text_extractor.py`: Extracts text from PDF presentations
 - `page_classifier.py`: Categorizes pages into logical sections
 - `chapter_generator.py`: Generates thesis chapters
