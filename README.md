@@ -29,7 +29,19 @@ A tool that automatically generates a thesis document from a PDF presentation us
    ```
    conda install -c conda-forge pandoc
    conda install tectonic
-   brew install pandoc-crossref  # For macOS
+   
+   # For macOS
+   brew install pandoc-crossref
+   
+   # For Linux (Debian/Ubuntu)
+   sudo apt-get install pandoc-crossref
+   
+   # For Linux (Fedora/RHEL/CentOS)
+   sudo dnf install pandoc-crossref
+   
+   # Alternative for any system: Install via cabal (Haskell package manager)
+   cabal update
+   cabal install pandoc-crossref
    ```
 
 ## Usage
