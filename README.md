@@ -91,6 +91,20 @@ python main.py path/to/your/presentation.pdf --compile
 - `thesis_compiler.py`: Compiles the final thesis document
 - `gemini_api.py`: Wrapper for Google's Gemini API
 
+## Testing
+
+Before running the tests, install the development dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+The project uses `pytest`. Run the test suite with:
+
+```bash
+pytest
+```
+
 ## License
 
 MIT
