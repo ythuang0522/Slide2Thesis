@@ -109,11 +109,11 @@ class YamlMetadataGenerator:
                     intro_content = f.read()
             
             metadata = self.extract_metadata_from_intro(intro_content)
-            print(metadata)
+            logger.debug(metadata)
             
             # Generate abstract
             abstract = self.generate_abstract(chapters_content)
-            print(abstract)
+            logger.debug(abstract)
             
             # Create YAML content
             yaml_template = "---\n"

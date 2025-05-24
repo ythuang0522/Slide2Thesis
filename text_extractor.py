@@ -113,7 +113,7 @@ class TextExtractor:
             text = self.extract_text_from_image(image, previous_paragraph)
             
             if text:
-                print(f"Page {page_num}:\n{text}\n\n")
+                logger.debug("Page %s:\n%s\n\n", page_num, text)
                 extracted_data[f"Page {page_num}"] = text
                 previous_paragraph = text
             else:

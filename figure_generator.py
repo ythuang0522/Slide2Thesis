@@ -70,7 +70,7 @@ class FigureGenerator:
                 figure_data = self._analyze_chapter_for_figures(chapter_file, figure_images, extracted_text)
                 if figure_data:
                     # Update chapter with figure references
-                    print(figure_data)
+                    logger.debug(f"Figure data: {figure_data}")
                     self._update_chapter_figures(chapter_file, figure_data, debug_folder)
                     logger.info(f"Added figure references to {os.path.basename(chapter_file)}")
                 else:

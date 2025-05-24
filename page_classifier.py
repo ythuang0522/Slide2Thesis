@@ -195,7 +195,7 @@ class PageClassifier:
             logger.error("No classification result received from API")
             return {}
             
-        print("Classification result:", classification_result)
+        logger.debug("Classification result: %s", classification_result)
 
         # Process each category
         categorized_content = {}
