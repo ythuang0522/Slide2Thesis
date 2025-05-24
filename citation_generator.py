@@ -156,7 +156,7 @@ class CitationGenerator:
         try:
             response = self.gemini_api.generate_content(prompt + "\n\nText:\n" + text)
 
-            print(response)
+            logger.debug(response)
             
             # Clean the response - remove any non-JSON content
             json_str = response.strip()
