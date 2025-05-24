@@ -184,7 +184,7 @@ class FigureGenerator:
         3. Mention visual comparisons or trends
         4. Use visual phrases like "as shown", "illustrates", "plots", etc.
         
-        Here is detailed information about the available figures (figure contextå) that can be referenced:
+        Here is detailed information about the available figures (figure context) that can be referenced:
         
         {figure_context}
         
