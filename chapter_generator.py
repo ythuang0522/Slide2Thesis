@@ -49,9 +49,9 @@ class ChapterGenerator:
         # Define chapter-specific guidelines
         specific_guidelines = {
             'introduction': """Chapter-Specific guidelines: 
-            - Provides comprehensive background information necessary for understanding the theresearch problem
+            - Provides comprehensive background information necessary for understanding the the research problem
             - Keywords and background knowledge in the provided page contents must be introduced in this chapter.
-            - Expand the background knowlege requirerd to understand the keywords and research problem using your knowledge base. Don't limited to the provided page contents.
+            - Expand the background knowledge required to understand the keywords and research problem using your knowledge base. Don't limited to the provided page contents.
             - Comprehensively describe the importance, impact, and current challenges or limitations of the research problem.
             - This chapter should be ended with a concise statement of the research problem and the goal of the thesis.
             - Write 5-6 paragraphs for the introduction chapter""",
@@ -62,10 +62,10 @@ class ChapterGenerator:
             - Write 3-4 paragraphs for the related works chapter""",
 
             'methods': """Chapter-Specific guidelines:
-            - Don't miss any deatils in each page content. Write each part as detailed as possible and expand the details using your knowledge base.""",
+            - Don't miss any details in each page content. Write each part as detailed as possible and expand the details using your knowledge base.""",
 
             'results': """Chapter-Specific guidelines:
-            - Present each result page as detailed as possible. Remeber to summarize the key messages of the results at the end of the paragraph or section.
+            - Present each result page as detailed as possible. Remember to summarize the key messages of the results at the end of the paragraph or section.
             - If a result page contains a figure, describe the figure like a the main body of a scientific paper.
             - If a result page contains a table, describe the table like a the main body of a scientific paper.
             - You can fill in the details of the results using your knowledge base.""",
