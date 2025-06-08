@@ -17,92 +17,74 @@ A tool that automatically generates a thesis document from a PDF presentation us
 The following flowchart illustrates the component flow and processing pipeline of Slide2Thesis:
 
 ```mermaid
-flowchart TD
-    A["📄 PDF Input<br/>(Presentation Slides)"] --> B["🔧 API Factory<br/>Create AI API Instance<br/>(Gemini/OpenAI)"]
-    B --> C["📝 Text Extractor<br/>Extract text from PDF pages<br/>Output: extracted_text.txt"]
-    C --> D["🏷️ Page Classifier<br/>Categorize pages into sections<br/>(Introduction, Methods, Results, etc.)"]
-    D --> E["📚 Chapter Generator<br/>Generate thesis chapters<br/>from classified sections"]
-    E --> F["📖 Citation Generator<br/>Add academic citations<br/>using PubMed API"]
-    F --> G["🖼️ Figure Generator<br/>Add figure references<br/>and captions"]
-    G --> H["📋 YAML Metadata Generator<br/>Generate thesis metadata<br/>(title, author, etc.)"]
-    H --> I["🔨 Thesis Compiler<br/>Compile final PDF using<br/>Pandoc + Tectonic"]
-    I --> J["📖 Final Thesis PDF"]
+flowchart LR
+    A[📄 PDF Slides] --> B[🤖 Gemini/ChatGPT API]
+    B --> C[📝 Text Extraction]
+    C --> D[🏷️ Page Classification]
+    D --> E[📚 Chapter Generation]
+    E --> F[📖 Citation Addition]
+    F --> G[🖼️ Figure Integration]
+    G --> H[📋 Metadata Creation]
+    H --> I[🔨 PDF Compilation]
+    I --> J[📖 Final Thesis]
 
-    subgraph "🌐 Web Interface"
-        K["Flask App<br/>(app.py)"] --> L["Upload Interface"]
-        L --> M["Background Processing"]
-        M --> N["Job Status Tracking"]
-        N --> O["Download Results"]
+    subgraph inputs [" "]
+        A
+        K[📧 PubMed API]
     end
 
-    subgraph "💻 CLI Interface"
-        P["Command Line<br/>(main.py)"] --> Q["Argument Parsing"]
-        Q --> R["Step Selection<br/>(All or Individual)"]
+    subgraph processing ["🔄 Core Pipeline"]
+        C
+        D
+        E
+        F
+        G
+        H
+        I
     end
 
-    subgraph "🔄 Processing Steps"
-        C --> C1["Page 1: Text"]
-        C --> C2["Page 2: Text"]
-        C --> C3["Page N: Text"]
-        
-        D --> D1["introduction_section.txt"]
-        D --> D2["methods_section.txt"]
-        D --> D3["results_section.txt"]
-        D --> D4["conclusions_section.txt"]
-        
-        E --> E1["introduction_chapter.md"]
-        E --> E2["methods_chapter.md"]
-        E --> E3["results_chapter.md"]
-        E --> E4["conclusions_chapter.md"]
-        
-        F --> F1["*_chapter_cited.md"]
-        F --> F2["references.bib"]
-        
-        G --> G1["*_chapter_with_figures.md"]
-        G --> G2["Figure references"]
-        
-        H --> H1["thesis_metadata.yaml"]
-        
-        I --> I1["thesis.tex"]
-        I --> I2["thesis.pdf"]
+    subgraph outputs [" "]
+        J
     end
 
-    subgraph "🔌 External APIs"
-        S["PubMed API<br/>(Citations)"]
-        T["AI APIs<br/>(Gemini/OpenAI)"]
-    end
+    F -.-> K
+    B -.-> C
+    B -.-> D
+    B -.-> E
+    B -.-> F
+    B -.-> G
+    B -.-> H
 
-    K --> A
-    P --> A
-    F --> S
-    B --> T
-    D --> T
-    E --> T
-    F --> T
-    G --> T
-    H --> T
+    classDef inputStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000
+    classDef processStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    classDef outputStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:3px,color:#000
+    classDef apiStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
 
-    style A fill:#e1f5fe
-    style J fill:#c8e6c9
-    style K fill:#fff3e0
-    style P fill:#f3e5f5
-    style S fill:#ffebee
-    style T fill:#e8f5e8
+    class A inputStyle
+    class C,D,E,F,G,H,I processStyle
+    class J outputStyle
+    class B,K apiStyle
 ```
 
 ### Processing Pipeline
 
-The system follows a 7-step pipeline:
+The system follows a streamlined 7-step pipeline:
 
-1. **Text Extraction**: Extracts text content from each PDF page
-2. **Page Classification**: Uses AI to categorize pages into thesis sections (Introduction, Methods, Results, etc.)
-3. **Chapter Generation**: Converts classified content into well-structured thesis chapters
-4. **Citation Addition**: Automatically adds relevant academic citations using PubMed API
-5. **Figure Integration**: Adds figure references and captions to chapters
-6. **Metadata Generation**: Creates YAML metadata for the thesis document
-7. **Thesis Compilation**: Compiles everything into a final PDF using Pandoc and Tectonic
+1. **📝 Text Extraction**: Extracts text content from each PDF page
+2. **🏷️ Page Classification**: Uses AI to categorize pages into thesis sections
+3. **📚 Chapter Generation**: Converts classified content into well-structured chapters
+4. **📖 Citation Addition**: Automatically adds relevant academic citations via PubMed
+5. **🖼️ Figure Integration**: Adds figure references and captions to chapters
+6. **📋 Metadata Creation**: Generates YAML metadata for the thesis document
+7. **🔨 PDF Compilation**: Compiles everything into a final PDF using Pandoc + Tectonic
 
-The system supports both web interface (Flask app) and command-line interface, with flexible AI provider support (Gemini/OpenAI).
+The diagram uses modern styling with:
+- **Blue**: Input (PDF slides)
+- **Purple**: Core processing steps
+- **Green**: Final output (thesis)
+- **Orange**: External APIs (AI & PubMed)
+
+The system supports both web interface and command-line interface with flexible AI provider support (Gemini/OpenAI).
 
 ## Installation
 
@@ -164,6 +146,12 @@ python main.py path/to/your/presentation.pdf --generate-chapters
 
 # Add citations only
 python main.py path/to/your/presentation.pdf --add-citations
+
+# Add figures only
+python main.py path/to/your/presentation.pdf --add-figures
+
+# Create YAML
+python main.py path/to/your/presentation.pdf --generate-yaml
 
 # Compile the final thesis
 python main.py path/to/your/presentation.pdf --compile
