@@ -4,18 +4,19 @@
 """
 1. Install required libraries:
    pip install -q -U google-genai
-   pip install pillow PyMuPDF tenacity biopython flask
+   pip install pillow PyMuPDF tenacity biopython flask openai
    conda install -c conda-forge pandoc
    conda install tectonic
    brew install pandoc-crossref
-2. Set your GOOGLE_API_KEY as an environment variable.
-   Get your API key from: https://makersuite.google.com/app/apikey
+2. Set your API keys as environment variables:
+   - GEMINI_API_KEY: Get from https://makersuite.google.com/app/apikey
+   - OPENAI_API_KEY: Get from https://platform.openai.com/api-keys
 """
 
 import os
 import argparse
 import logging
-from gemini_api import GeminiAPI
+from api_factory import create_ai_api
 from text_extractor import TextExtractor
 from page_classifier import PageClassifier
 from chapter_generator import ChapterGenerator
@@ -25,11 +26,6 @@ from citation_generator import CitationGenerator
 from figure_generator import FigureGenerator
 from dotenv import load_dotenv
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger(__name__)
 
 def setup_debug_folder(pdf_path: str) -> str:
@@ -39,9 +35,10 @@ def setup_debug_folder(pdf_path: str) -> str:
     os.makedirs(debug_folder, exist_ok=True)
     return debug_folder
 
-def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=False, 
-             categorize_pages=False, generate_chapters=False, add_citations=False, 
-             add_figures=False, generate_yaml=False, compile_thesis=False):
+def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai_api_key=None, 
+               api_key=None, email=None, run_all=True, extract_text=False, 
+               categorize_pages=False, generate_chapters=False, add_citations=False, 
+               add_figures=False, generate_yaml=False, compile_thesis=False):
     """Process a PDF file and return the path to the debug folder."""
     # Validate PDF file
     if not os.path.exists(pdf_file):
@@ -54,57 +51,60 @@ def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=F
     metadata_file = os.path.join(debug_folder, "thesis_metadata.yaml")
     output_pdf = os.path.join(debug_folder, "thesis.pdf")
 
-    # Use provided API key or get from environment
-    api_key = api_key or os.getenv('GEMINI_API_KEY')
-    if not api_key:
-        logger.error("No API key provided")
-        raise ValueError("No API key provided")
-    
     # Get email for PubMed API
     email = email or os.getenv('PUBMED_EMAIL')
     if not email:
         logger.error("No email provided for PubMed API")
         raise ValueError("No email provided for PubMed API")
     
-    gemini_api = GeminiAPI(api_key=api_key)
+    # Create AI API instance using factory
+    ai_api = create_ai_api(
+        provider=provider,
+        model=model,
+        gemini_api_key=gemini_api_key,
+        openai_api_key=openai_api_key,
+        api_key=api_key  # Backward compatibility
+    )
+    
+    logger.info(f"Using {ai_api.provider_name} provider with model: {ai_api.model_name}")
 
     # Run all steps
     if run_all:
         logger.info("Step 1: Extracting text from PDF...")
-        extractor = TextExtractor(pdf_file, gemini_api)
+        extractor = TextExtractor(pdf_file, ai_api)
         extracted_data = extractor.extract_text(extracted_text_file)
         if not extracted_data:
             logger.error("Text extraction failed")
             raise RuntimeError("Text extraction failed")
 
         logger.info("Step 2: Categorizing pages...")
-        classifier = PageClassifier(gemini_api)
+        classifier = PageClassifier(ai_api)
         categorized_content = classifier.classify_pages(extracted_text_file, debug_folder)
         if not categorized_content:
             logger.error("Page categorization failed")
             raise RuntimeError("Page categorization failed")
 
         logger.info("Step 3: Generating chapters...")
-        generator = ChapterGenerator(gemini_api)
+        generator = ChapterGenerator(ai_api)
         generated_chapters = generator.generate_all_chapters(debug_folder)
         if not generated_chapters:
             logger.error("Chapter generation failed")
             raise RuntimeError("Chapter generation failed")
 
         logger.info("Step 4: Adding citations to chapters...")
-        citation_gen = CitationGenerator(gemini_api, email)
+        citation_gen = CitationGenerator(ai_api, email)
         if not citation_gen.process_chapters(debug_folder):
             logger.error("Citation generation failed")
             raise RuntimeError("Citation generation failed")
 
         logger.info("Step 5: Adding figure references to chapters...")
-        figure_gen = FigureGenerator(gemini_api)
+        figure_gen = FigureGenerator(ai_api)
         if not figure_gen.process_chapters(debug_folder):
             logger.error("Figure reference generation failed")
             raise RuntimeError("Figure reference generation failed")
 
         logger.info("Step 6: Generating YAML metadata...")
-        metadata_gen = YamlMetadataGenerator(gemini_api)
+        metadata_gen = YamlMetadataGenerator(ai_api)
         if not metadata_gen.generate_metadata(debug_folder, metadata_file):
             logger.error("YAML metadata generation failed")
             raise RuntimeError("YAML metadata generation failed")
@@ -120,7 +120,7 @@ def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=F
         # Run individual steps based on flags
         if extract_text:
             logger.info("Step 1: Extracting text from PDF...")
-            extractor = TextExtractor(pdf_file, gemini_api)
+            extractor = TextExtractor(pdf_file, ai_api)
             extracted_data = extractor.extract_text(extracted_text_file)
             if not extracted_data:
                 logger.error("Text extraction failed")
@@ -129,7 +129,7 @@ def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=F
             
         if categorize_pages:
             logger.info("Step 2: Categorizing pages...")
-            classifier = PageClassifier(gemini_api)
+            classifier = PageClassifier(ai_api)
             categorized_content = classifier.classify_pages(extracted_text_file, debug_folder)
             if not categorized_content:
                 logger.error("Page categorization failed")
@@ -138,7 +138,7 @@ def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=F
             
         if generate_chapters:
             logger.info("Step 3: Generating chapters...")
-            generator = ChapterGenerator(gemini_api)
+            generator = ChapterGenerator(ai_api)
             generated_chapters = generator.generate_all_chapters(debug_folder)
             if not generated_chapters:
                 logger.error("Chapter generation failed")
@@ -147,7 +147,7 @@ def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=F
             
         if add_citations:
             logger.info("Step 4: Adding citations to chapters...")
-            citation_gen = CitationGenerator(gemini_api, email)
+            citation_gen = CitationGenerator(ai_api, email)
             if not citation_gen.process_chapters(debug_folder):
                 logger.error("Citation generation failed")
                 raise RuntimeError("Citation generation failed")
@@ -155,7 +155,7 @@ def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=F
             
         if add_figures:
             logger.info("Step 5: Adding figure references to chapters...")
-            figure_gen = FigureGenerator(gemini_api)
+            figure_gen = FigureGenerator(ai_api)
             if not figure_gen.process_chapters(debug_folder):
                 logger.error("Figure reference generation failed")
                 raise RuntimeError("Figure reference generation failed")
@@ -163,7 +163,7 @@ def process_pdf(pdf_file, api_key=None, email=None, run_all=True, extract_text=F
             
         if generate_yaml:
             logger.info("Step 6: Generating YAML metadata...")
-            metadata_gen = YamlMetadataGenerator(gemini_api)
+            metadata_gen = YamlMetadataGenerator(ai_api)
             if not metadata_gen.generate_metadata(debug_folder, metadata_file):
                 logger.error("YAML metadata generation failed")
                 raise RuntimeError("YAML metadata generation failed")
@@ -186,8 +186,25 @@ def main():
     
     parser = argparse.ArgumentParser(description='Generate a thesis from a PDF presentation.')
     parser.add_argument('pdf_file', help='Path to the input PDF')
-    parser.add_argument('--api-key', help='Google Gemini API key (optional if GEMINI_API_KEY is set in .env)')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable debug logging')
+    
+    # API Provider and Model arguments
+    parser.add_argument('--provider', choices=['gemini', 'openai', 'auto'], default='auto',
+                       help='AI API provider to use (default: auto-detect from model)')
+    parser.add_argument('--model', help='Model name to use (auto-detects provider if not specified)')
+    
+    # API Key arguments
+    parser.add_argument('--api-key', help='Legacy API key (used as Gemini API key for backward compatibility)')
+    parser.add_argument('--gemini-api-key', help='Gemini API key (optional if GEMINI_API_KEY is set in .env)')
+    parser.add_argument('--openai-api-key', help='OpenAI API key (optional if OPENAI_API_KEY is set in .env)')
+    
+    # Other arguments
     parser.add_argument('--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
+    
+    # Legacy model arguments (for backward compatibility)
+    parser.add_argument('--gemini-model', help='Gemini model name (deprecated, use --model instead)')
+    
+    # Step selection arguments
     parser.add_argument('--extract-text', action='store_true', help='Extract text from PDF')
     parser.add_argument('--categorize-pages', action='store_true', help='Categorize pages')
     parser.add_argument('--generate-chapters', action='store_true', help='Generate chapters')
@@ -195,7 +212,25 @@ def main():
     parser.add_argument('--add-figures', action='store_true', help='Add figure references to chapters')
     parser.add_argument('--generate-yaml', action='store_true', help='Generate YAML metadata')
     parser.add_argument('--compile', action='store_true', help='Compile thesis PDF')
+    
     args = parser.parse_args()
+
+    # Set up logging level based on verbose flag
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        force=True  # Override any existing configuration
+    )
+    
+    if args.verbose:
+        logger.info("Debug logging enabled")
+
+    # Handle legacy --gemini-model argument
+    model = args.model
+    if args.gemini_model and not model:
+        model = args.gemini_model
+        logger.warning("--gemini-model is deprecated, use --model instead")
 
     # Check if we should run all steps
     run_all = not any([args.extract_text, args.categorize_pages, args.generate_chapters, 
@@ -204,7 +239,11 @@ def main():
     try:
         process_pdf(
             pdf_file=args.pdf_file, 
-            api_key=args.api_key, 
+            provider=args.provider,
+            model=model,
+            gemini_api_key=args.gemini_api_key,
+            openai_api_key=args.openai_api_key,
+            api_key=args.api_key,
             email=args.email, 
             run_all=run_all,
             extract_text=args.extract_text,

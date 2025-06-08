@@ -2,7 +2,7 @@ import os
 import logging
 import time
 from typing import Dict, Optional, List
-from gemini_api import GeminiAPI
+from ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(
@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 class YamlMetadataGenerator:
     """Generates YAML metadata for the thesis."""
     
-    def __init__(self, gemini_api: GeminiAPI):
+    def __init__(self, ai_api: AIAPIInterface):
         """Initialize the YamlMetadataGenerator.
         
         Args:
-            gemini_api: Instance of GeminiAPI for metadata generation.
+            ai_api: Instance of AIAPIInterface for metadata generation.
         """
-        self.gemini_api = gemini_api
+        self.ai_api = ai_api
         
     def extract_metadata_from_intro(self, intro_content: str) -> Dict[str, str]:
         """Extract title, author, and advisor from introduction content.
@@ -41,7 +41,7 @@ class YamlMetadataGenerator:
         Text:
         """ + intro_content
 
-        metadata = self.gemini_api.generate_content(metadata_prompt)
+        metadata = self.ai_api.generate_content(metadata_prompt)
         result = {
             'title': "Thesis Title",
             'author': "Author Name",
@@ -72,7 +72,7 @@ class YamlMetadataGenerator:
         
         Thesis content:\n""" + "\n\n".join(chapters_content.values())
 
-        abstract = self.gemini_api.generate_content(abstract_prompt)
+        abstract = self.ai_api.generate_content(abstract_prompt)
         return abstract if abstract else "Abstract generation failed."
         
     def generate_metadata(self, chapters_dir: str, output_file: str) -> bool:

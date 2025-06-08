@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import Dict, Optional
-from gemini_api import GeminiAPI
+from ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(
@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 class ChapterGenerator:
     """Generates thesis chapters from classified sections."""
     
-    def __init__(self, gemini_api: GeminiAPI):
+    def __init__(self, ai_api: AIAPIInterface):
         """Initialize the ChapterGenerator.
         
         Args:
-            gemini_api: Instance of GeminiAPI for chapter generation.
+            ai_api: Instance of AIAPIInterface for chapter generation.
         """
-        self.gemini_api = gemini_api
+        self.ai_api = ai_api
         self.categories = ['introduction', 'related works', 'methods', 'results', 'conclusions', 'appendix']
         
     def generate_chapter(self, section_content: str, chapter_type: str) -> Optional[str]:
@@ -84,7 +84,7 @@ class ChapterGenerator:
         prompt = (f"{general_guidelines}\n\n{specific_guidelines.get(chapter_type, '')}"
                 f"\n\nBelow are the extracted text pages for the {chapter_type} chapter:\n\n{section_content}\n\nPlease generate a comprehensive {chapter_type} chapter based on above guidelines and content.")
         
-        return self.gemini_api.generate_content(prompt)
+        return self.ai_api.generate_content(prompt)
         
     def check_and_expand_chapter(self, section_content: str, chapter_text: str) -> str:
         """Check for missing content and expand if necessary.
@@ -110,7 +110,7 @@ class ChapterGenerator:
         {chapter_text}
         """
         
-        expanded_text = self.gemini_api.generate_content(prompt.format(
+        expanded_text = self.ai_api.generate_content(prompt.format(
             section_content=section_content,
             chapter_text=chapter_text
         ))
@@ -143,11 +143,21 @@ class ChapterGenerator:
         Chapter content to polish:
         {chapter_text}"""
 
-        polished_text = self.gemini_api.generate_content(prompt.format(chapter_text=chapter_text))
+        polished_text = self.ai_api.generate_content(prompt.format(chapter_text=chapter_text))
         
         # Clean up any remaining markdown code block markers
         if polished_text:
             polished_text = polished_text.replace('```markdown\n', '').replace('```', '').strip()
+        
+        # Apply math formatting as final step
+        try:
+            from math_formatter import MathFormatter
+            math_formatter = MathFormatter()
+            polished_text = math_formatter.format_content(polished_text)
+            logger.debug("Applied math formatting to chapter content")
+        except Exception as e:
+            logger.warning(f"Math formatting failed: {e}")
+            # Continue without math formatting if it fails
         
         return polished_text if polished_text else chapter_text
         
@@ -183,8 +193,9 @@ class ChapterGenerator:
                 logger.error(f"Failed to generate {category} chapter")
                 continue
                 
-            # Check and expand chapter content for methods and results
+            # Double check and expand chapter content for methods and results
             if category in ['methods', 'results']:
+                logger.info(f"Double checking and expanding {category} chapter")
                 chapter_text = self.check_and_expand_chapter(section_content, chapter_text)
                 
             # Polish the chapter content

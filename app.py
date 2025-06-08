@@ -10,7 +10,7 @@ import logging
 import sys
 
 # Import the necessary classes from your main application
-from gemini_api import GeminiAPI
+from api_factory import create_ai_api
 from text_extractor import TextExtractor
 from page_classifier import PageClassifier
 from chapter_generator import ChapterGenerator
@@ -118,11 +118,18 @@ def process_pdf_background(job_id, file_path, api_key, email):
                 latest_line = lines[-1]
                 jobs[job_id]['message'] = latest_line
         
+        # Create AI API instance using factory (default to Gemini for web interface)
+        ai_api = create_ai_api(
+            provider='gemini',  # Default to Gemini for web interface
+            model='gemini-2.5-pro-preview-06-05',
+            api_key=api_key  # Use legacy parameter for backward compatibility
+        )
+        
         # Call the main processing function with periodic status updates
         try:
             # Step 1: Extract text
             jobs[job_id]['message'] = "Step 1: Extracting text from PDF..."
-            extractor = TextExtractor(file_path, GeminiAPI(api_key=api_key))
+            extractor = TextExtractor(file_path, ai_api)
             extracted_text_file = os.path.join(debug_folder, "extracted_text.txt")
             extracted_data = extractor.extract_text(extracted_text_file)
             if not extracted_data:
@@ -131,7 +138,7 @@ def process_pdf_background(job_id, file_path, api_key, email):
             
             # Step 2: Categorize pages
             jobs[job_id]['message'] = "Step 2: Categorizing pages..."
-            classifier = PageClassifier(GeminiAPI(api_key=api_key))
+            classifier = PageClassifier(ai_api)
             categorized_content = classifier.classify_pages(extracted_text_file, debug_folder)
             if not categorized_content:
                 raise RuntimeError("Page categorization failed")
@@ -139,7 +146,7 @@ def process_pdf_background(job_id, file_path, api_key, email):
             
             # Step 3: Generate chapters
             jobs[job_id]['message'] = "Step 3: Generating chapters..."
-            generator = ChapterGenerator(GeminiAPI(api_key=api_key))
+            generator = ChapterGenerator(ai_api)
             generated_chapters = generator.generate_all_chapters(debug_folder)
             if not generated_chapters:
                 raise RuntimeError("Chapter generation failed")
@@ -147,21 +154,21 @@ def process_pdf_background(job_id, file_path, api_key, email):
             
             # Step 4: Add citations
             jobs[job_id]['message'] = "Step 4: Adding citations to chapters..."
-            citation_gen = CitationGenerator(GeminiAPI(api_key=api_key), email)
+            citation_gen = CitationGenerator(ai_api, email)
             if not citation_gen.process_chapters(debug_folder):
                 raise RuntimeError("Citation generation failed")
             update_status_from_logs()
             
             # Step 5: Add figures
             jobs[job_id]['message'] = "Step 5: Adding figure references to chapters..."
-            figure_gen = FigureGenerator(GeminiAPI(api_key=api_key))
+            figure_gen = FigureGenerator(ai_api)
             if not figure_gen.process_chapters(debug_folder):
                 raise RuntimeError("Figure reference generation failed")
             update_status_from_logs()
             
             # Step 6: Generate YAML metadata
             jobs[job_id]['message'] = "Step 6: Generating YAML metadata..."
-            metadata_gen = YamlMetadataGenerator(GeminiAPI(api_key=api_key))
+            metadata_gen = YamlMetadataGenerator(ai_api)
             metadata_file = os.path.join(debug_folder, "thesis_metadata.yaml")
             if not metadata_gen.generate_metadata(debug_folder, metadata_file):
                 raise RuntimeError("YAML metadata generation failed")
@@ -199,23 +206,18 @@ def process_pdf_background(job_id, file_path, api_key, email):
             for root, _, files in os.walk(debug_folder):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, os.path.dirname(debug_folder))
+                    arcname = os.path.relpath(file_path, debug_folder)
                     zipf.write(file_path, arcname)
         
         # Update job status
-        jobs[job_id]['status'] = "completed"
+        jobs[job_id]['status'] = 'completed'
         jobs[job_id]['result_path'] = zip_path
+        jobs[job_id]['message'] = 'Processing completed successfully!'
         
     except Exception as e:
-        # Catch any unexpected exceptions
-        error_message = f"Error: {str(e)}"
-        logger.error(error_message)
-        jobs[job_id]['status'] = "failed"
-        jobs[job_id]['message'] = error_message
-        
-        # Print full traceback for debugging
-        import traceback
-        logger.error(traceback.format_exc())
+        jobs[job_id]['status'] = 'failed'
+        jobs[job_id]['message'] = f'Error: {str(e)}'
+        logger.error(f"Job {job_id} failed: {str(e)}")
 
 @app.route('/job/<job_id>')
 def job_status(job_id):
@@ -239,8 +241,12 @@ def download_results(job_id):
         flash('Results not available')
         return redirect(url_for('index'))
     
-    zip_path = jobs[job_id]['result_path']
-    return send_file(zip_path, as_attachment=True, download_name='thesis_package.zip')
+    result_path = jobs[job_id]['result_path']
+    if not os.path.exists(result_path):
+        flash('Result file not found')
+        return redirect(url_for('index'))
+    
+    return send_file(result_path, as_attachment=True, download_name='thesis_package.zip')
 
 if __name__ == '__main__':
     app.run(debug=True) 

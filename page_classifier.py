@@ -2,7 +2,7 @@ import os
 import logging
 import re
 from typing import Dict, Optional
-from gemini_api import GeminiAPI
+from ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(
@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 class PageClassifier:
     """Classifies extracted pages into thesis sections."""
     
-    def __init__(self, gemini_api: GeminiAPI):
+    def __init__(self, ai_api: AIAPIInterface):
         """Initialize the PageClassifier.
         
         Args:
-            gemini_api: Instance of GeminiAPI for text classification.
+            ai_api: Instance of AIAPIInterface for text classification.
         """
-        self.gemini_api = gemini_api
+        self.ai_api = ai_api
         self.categories = ['introduction', 'related works', 'methods', 'results', 'conclusions', 'appendix']
         
     def load_extracted_text(self, text_file_path: str) -> Optional[Dict[str, str]]:
@@ -57,7 +57,7 @@ class PageClassifier:
             return None
             
     def _create_classification_prompt(self, extracted_data: Dict[str, str]) -> str:
-        """Create the prompt for the Gemini API classification.
+        """Create the prompt for the AI API classification.
         
         This method constructs a detailed prompt that instructs the AI model how to classify
         academic presentation pages. It includes:
@@ -164,7 +164,7 @@ class PageClassifier:
         
         This method orchestrates the complete classification process:
         1. Loads the extracted text from the input file
-        2. Creates and sends a classification prompt to the Gemini API
+        2. Creates and sends a classification prompt to the AI API
         3. Processes the API response to organize pages by category
         4. Writes each category's content to separate files
         5. Returns the organized content
@@ -190,7 +190,7 @@ class PageClassifier:
             
         # Get classification from API
         classification_prompt = self._create_classification_prompt(extracted_data)
-        classification_result = self.gemini_api.generate_content(classification_prompt)
+        classification_result = self.ai_api.generate_content(classification_prompt)
         if not classification_result:
             logger.error("No classification result received from API")
             return {}

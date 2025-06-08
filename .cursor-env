@@ -1,0 +1,4 @@
+# .cursor-env
+python:
+  conda_env: gemini 
+  conda_path: /Users/ythuang/miniforge3 

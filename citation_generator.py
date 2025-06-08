@@ -5,7 +5,7 @@ import logging
 from typing import Dict, List, Optional
 from Bio import Entrez
 import time
-from gemini_api import GeminiAPI
+from ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(
@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 class CitationGenerator:
     """Generates and manages citations for thesis chapters."""
     
-    def __init__(self, gemini_api: GeminiAPI, email: str):
+    def __init__(self, ai_api: AIAPIInterface, email: str):
         """Initialize the CitationGenerator.
         
         Args:
-            gemini_api: Instance of GeminiAPI for citation analysis
+            ai_api: Instance of AIAPIInterface for citation analysis
             email: Email for PubMed API access
         """
-        self.gemini_api = gemini_api
+        self.ai_api = ai_api
         Entrez.email = email
         
     def process_chapters(self, debug_folder: str) -> bool:
@@ -128,7 +128,7 @@ class CitationGenerator:
             return None
             
     def _analyze_citations(self, text: str) -> Dict:
-        """Analyze text for sentences requiring citations using Gemini.
+        """Analyze text for sentences requiring citations using AIAPI.
         
         Args:
             text: Text content to analyze
@@ -154,7 +154,7 @@ class CitationGenerator:
         """
         
         try:
-            response = self.gemini_api.generate_content(prompt + "\n\nText:\n" + text)
+            response = self.ai_api.generate_content(prompt + "\n\nText:\n" + text)
 
             logger.debug(response)
             
@@ -178,7 +178,7 @@ class CitationGenerator:
             return citation_data
             
         except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Failed to parse Gemini API response: {e}")
+            logger.error(f"Failed to parse AIAPI response: {e}")
             return {"sentences": []}
         except Exception as e:
             logger.error(f"Error in citation analysis: {e}")
@@ -386,8 +386,9 @@ class CitationGenerator:
         # Remove HTML/XML tags from title
         title = re.sub(r'<[^>]+>', '', paper['title'])
         
-        # Escape special characters in title and journal
-        title = (title.replace("&", "\\&")
+        # Escape special characters in title and journal (backslash must be first!)
+        title = (title.replace("\\", "\\textbackslash")
+                     .replace("&", "\\&")
                      .replace("%", "\\%")
                      .replace("$", "\\$")
                      .replace("#", "\\#")
@@ -395,16 +396,16 @@ class CitationGenerator:
                      .replace("{", "\\{")
                      .replace("}", "\\}")
                      .replace("~", "\\textasciitilde")
-                     .replace("^", "\\textasciicircum")
-                     .replace("\\", "\\textbackslash"))
+                     .replace("^", "\\textasciicircum"))
         
-        journal = (paper['journal'].replace("&", "\\&")
-                                  .replace("%", "\\%")
-                                  .replace("$", "\\$")
-                                  .replace("#", "\\#")
-                                  .replace("_", "\\_")
-                                  .replace("{", "\\{")
-                                  .replace("}", "\\}"))
+        journal = (paper['journal'].replace("\\", "\\textbackslash")
+                                   .replace("&", "\\&")
+                                   .replace("%", "\\%")
+                                   .replace("$", "\\$")
+                                   .replace("#", "\\#")
+                                   .replace("_", "\\_")
+                                   .replace("{", "\\{")
+                                   .replace("}", "\\}"))
         
         doi_field = f"  doi = {{{paper['doi']}}},\n" if paper['doi'] != "Not available" else ""
         
@@ -439,7 +440,7 @@ class CitationGenerator:
                     citations = "; ".join([f"@{key}" for key in bibtex_keys[sentence]])
                     citation = f"[{citations}]"
                     updated_text = re.sub(
-                        f"{re.escape(sentence)}(?!\s*\[@)",
+                        f"{re.escape(sentence)}(?!\\s*\\[@)",
                         f"{sentence} {citation}",
                         updated_text,
                         count=1

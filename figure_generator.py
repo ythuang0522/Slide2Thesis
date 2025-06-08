@@ -5,7 +5,7 @@ import logging
 import glob
 from typing import Dict, List, Optional, Tuple
 from PIL import Image
-from gemini_api import GeminiAPI
+from ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(
@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 class FigureGenerator:
     """Identifies sentences that should reference figures and adds appropriate figure references."""
     
-    def __init__(self, gemini_api: GeminiAPI):
+    def __init__(self, ai_api: AIAPIInterface):
         """Initialize the FigureGenerator.
         
         Args:
-            gemini_api: Instance of GeminiAPI for figure analysis
+            ai_api: Instance of AIAPIInterface for figure analysis
         """
-        self.gemini_api = gemini_api
+        self.ai_api = ai_api
         # Add a class-level dictionary to track figure IDs across all chapters
         self.global_figure_ids = {}
         
@@ -162,7 +162,7 @@ class FigureGenerator:
     
     def _analyze_figures(self, text: str, figure_images: Dict[str, str], 
                         extracted_text: Dict[str, str]) -> Dict:
-        """Analyze text for sentences that should reference figures using Gemini.
+        """Analyze text for sentences that should reference figures using AI.
         
         Args:
             text: Text content to analyze
@@ -208,7 +208,7 @@ class FigureGenerator:
         """
         
         try:
-            response = self.gemini_api.generate_content(prompt + "\n\nChapter text to analyze:\n" + text)
+            response = self.ai_api.generate_content(prompt + "\n\nChapter text to analyze:\n" + text)
             
             # Clean the response - remove any non-JSON content
             json_str = response.strip()

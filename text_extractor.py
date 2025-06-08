@@ -4,7 +4,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 import io
 from typing import List, Dict, Optional
-from gemini_api import GeminiAPI
+from ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(
@@ -14,17 +14,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class TextExtractor:
-    """Extracts text from a PDF by converting pages to images and using the Gemini API."""
+    """Extracts text from a PDF by converting pages to images and using AI API."""
 
-    def __init__(self, pdf_path: str, gemini_api: GeminiAPI):
+    def __init__(self, pdf_path: str, ai_api: AIAPIInterface):
         """Initialize the TextExtractor.
 
         Args:
             pdf_path: Path to the PDF file.
-            gemini_api: Instance of GeminiAPI for text extraction.
+            ai_api: Instance of AIAPIInterface for text extraction.
         """
         self.pdf_path = pdf_path
-        self.gemini_api = gemini_api
+        self.ai_api = ai_api
 
     def pdf_to_images(self, dpi: int = 300) -> List[Image.Image]:
         """Convert PDF pages to PIL Images.
@@ -59,7 +59,7 @@ class TextExtractor:
         return images
 
     def extract_text_from_image(self, image: Image.Image, previous_paragraph: Optional[str] = None) -> Optional[str]:
-        """Extract text from a single image using Gemini API.
+        """Extract text from a single image using AI API.
 
         Args:
             image: PIL Image object of the slide.
@@ -87,7 +87,7 @@ class TextExtractor:
         if previous_paragraph:
             prompt += f"""\n\n**Previous slide context:** \n\n{previous_paragraph}\n\nConsidering this context from the previous slide image to write the description provided in the current slide. Ensure the description for this slide logically follows the previous context. However, if the slide is unrelated to previous context (e.g., a new topic or a different section), ignore the previous context and generate a description based solely on the current slide."""
 
-        return self.gemini_api.generate_content(prompt, image)
+        return self.ai_api.generate_content(prompt, image)
 
     def extract_text(self, output_file: str) -> Dict[str, str]:
         """Extract text from all pages and write to output file.
