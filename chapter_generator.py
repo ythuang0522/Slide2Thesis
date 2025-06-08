@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Dict, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from ai_api_interface import AIAPIInterface
 
 # Set up logging
@@ -160,53 +161,92 @@ class ChapterGenerator:
             # Continue without math formatting if it fails
         
         return polished_text if polished_text else chapter_text
+    
+    def _generate_single_chapter_task(self, category: str, working_dir: str) -> tuple[str, Optional[str]]:
+        """Generate a single chapter task for concurrent execution.
         
-    def generate_all_chapters(self, working_dir: str) -> Dict[str, str]:
+        Args:
+            category: Chapter category to generate.
+            working_dir: Directory containing section files.
+            
+        Returns:
+            Tuple of (category, generated_chapter_content) or (category, None) if failed.
+        """
+        section_file = os.path.join(working_dir, f"{category.lower().replace(' ', '_')}_section.txt")
+        if not os.path.exists(section_file):
+            logger.info(f"Skipping {category} - section file not found")
+            return category, None
+            
+        # Read the content and check if it's empty
+        with open(section_file, 'r', encoding='utf-8') as f:
+            section_content = f.read().strip()
+        
+        # Skip if the section content is empty
+        if not section_content:
+            logger.info(f"Skipping empty {category} section")
+            return category, None
+        
+        # Generate initial chapter
+        chapter_text = self.generate_chapter(section_content, category)
+        if not chapter_text:
+            logger.error(f"Failed to generate {category} chapter")
+            return category, None
+            
+        # Double check and expand chapter content for methods and results
+        if category in ['methods', 'results']:
+            logger.info(f"Double checking and expanding {category} chapter")
+            chapter_text = self.check_and_expand_chapter(section_content, chapter_text)
+            
+        # Polish the chapter content
+        chapter_text = self.polish_thesis_content(chapter_text)
+        
+        # Save the chapter
+        output_file = os.path.join(working_dir, f"{category.lower().replace(' ', '_')}_chapter.md")
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(chapter_text)
+            
+        logger.info(f"Generated {category} chapter: {output_file}")
+        return category, chapter_text
+        
+    def generate_all_chapters(self, working_dir: str, threads: int = 1) -> Dict[str, str]:
         """Generate all chapters from section files.
         
         Args:
             working_dir: Directory containing section files and where chapter files will be written.
+            threads: Number of threads to use for concurrent generation (default: 1 for sequential).
             
         Returns:
             Dictionary mapping categories to generated chapter content.
         """
         generated_chapters = {}
         
-        for category in self.categories:
-            section_file = os.path.join(working_dir, f"{category.lower().replace(' ', '_')}_section.txt")
-            if not os.path.exists(section_file):
-                logger.info(f"Skipping {category} - section file not found")
-                continue
+        if threads <= 1:
+            # Sequential processing (original behavior)
+            logger.info("Generating chapters sequentially...")
+            for category in self.categories:
+                category_result, chapter_text = self._generate_single_chapter_task(category, working_dir)
+                if chapter_text:
+                    generated_chapters[category_result] = chapter_text
+        else:
+            # Concurrent processing
+            logger.info(f"Generating chapters concurrently using {threads} threads...")
+            with ThreadPoolExecutor(max_workers=threads) as executor:
+                # Submit all chapter generation tasks
+                future_to_category = {
+                    executor.submit(self._generate_single_chapter_task, category, working_dir): category
+                    for category in self.categories
+                }
                 
-            # Read the content and check if it's empty
-            with open(section_file, 'r', encoding='utf-8') as f:
-                section_content = f.read().strip()
-            
-            # Skip if the section content is empty
-            if not section_content:
-                logger.info(f"Skipping empty {category} section")
-                continue
-            
-            # Generate initial chapter
-            chapter_text = self.generate_chapter(section_content, category)
-            if not chapter_text:
-                logger.error(f"Failed to generate {category} chapter")
-                continue
-                
-            # Double check and expand chapter content for methods and results
-            if category in ['methods', 'results']:
-                logger.info(f"Double checking and expanding {category} chapter")
-                chapter_text = self.check_and_expand_chapter(section_content, chapter_text)
-                
-            # Polish the chapter content
-            chapter_text = self.polish_thesis_content(chapter_text)
-            
-            # Save the chapter
-            output_file = os.path.join(working_dir, f"{category.lower().replace(' ', '_')}_chapter.md")
-            with open(output_file, 'w', encoding='utf-8') as f:
-                f.write(chapter_text)
-                
-            generated_chapters[category] = chapter_text
-            logger.info(f"Generated {category} chapter: {output_file}")
-            
+                # Collect results as they complete
+                for future in as_completed(future_to_category):
+                    category = future_to_category[future]
+                    try:
+                        category_result, chapter_text = future.result()
+                        if chapter_text:
+                            generated_chapters[category_result] = chapter_text
+                            logger.info(f"Completed {category_result} chapter generation")
+                    except Exception as e:
+                        logger.error(f"Error generating {category} chapter: {str(e)}")
+                        
+        logger.info(f"Generated {len(generated_chapters)} chapters total")
         return generated_chapters 

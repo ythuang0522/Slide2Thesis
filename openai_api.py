@@ -57,8 +57,7 @@ class OpenAIAPI(AIAPIInterface):
     
     @retry(
         stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry_error_callback=lambda retry_state: None
+        wait=wait_exponential(multiplier=1, min=4, max=10)
     )
     def generate_content(self, prompt: str, image: Optional[Image.Image] = None) -> Optional[str]:
         """Generate content using the OpenAI API with retry logic.

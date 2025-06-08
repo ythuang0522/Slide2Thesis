@@ -3,6 +3,7 @@ import re
 import os
 import logging
 from typing import Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from Bio import Entrez
 import time
 from ai_api_interface import AIAPIInterface
@@ -27,11 +28,12 @@ class CitationGenerator:
         self.ai_api = ai_api
         Entrez.email = email
         
-    def process_chapters(self, debug_folder: str) -> bool:
+    def process_chapters(self, debug_folder: str, threads: int = 1) -> bool:
         """Process all chapter files in the debug folder and add citations.
         
         Args:
             debug_folder: Path to the debug folder containing chapter files
+            threads: Number of threads to use for concurrent processing (default: 1)
             
         Returns:
             bool: True if processing was successful, False otherwise
@@ -49,33 +51,37 @@ class CitationGenerator:
             all_papers = []
             citation_data_by_chapter = {}
             
-            # Process each chapter
-            for chapter_file in chapter_files:
-                chapter_path = os.path.join(debug_folder, chapter_file)
-                chapter_name = chapter_file.replace('_chapter.md', '')
-                
-                # Only process citations for specific chapters
-                if chapter_name in citation_chapters:
-                    logger.info(f"Processing citations for {chapter_file}")
-                    
-                    # Analyze chapter for citations
-                    citation_data = self._analyze_chapter(chapter_path)
+            if threads <= 1:
+                # Sequential processing (original behavior)
+                logger.info("Processing chapters sequentially for citations...")
+                for chapter_file in chapter_files:
+                    chapter_file_result, citation_data, papers = self._process_single_chapter_task(
+                        chapter_file, debug_folder, citation_chapters
+                    )
                     if citation_data:
-                        # Store citation data
-                        citation_data_by_chapter[chapter_file] = citation_data
-                        
-                        # Generate citations
-                        papers = self._generate_citations(citation_data)
+                        citation_data_by_chapter[chapter_file_result] = citation_data
                         all_papers.extend(papers)
-                else:
-                    # For non-citation chapters, just create the _cited version without modifications
-                    base_name = os.path.splitext(os.path.basename(chapter_path))[0]
-                    output_path = os.path.join(debug_folder, f"{base_name}_cited.md")
-                    with open(chapter_path, "r", encoding="utf-8") as f:
-                        text = f.read()
-                    with open(output_path, "w", encoding="utf-8") as f:
-                        f.write(text)
-                    logger.info(f"Created cited version without citations for {chapter_file}")
+            else:
+                # Concurrent processing
+                logger.info(f"Processing chapters concurrently for citations using {threads} threads...")
+                with ThreadPoolExecutor(max_workers=threads) as executor:
+                    # Submit all chapter processing tasks
+                    future_to_chapter = {
+                        executor.submit(self._process_single_chapter_task, chapter_file, debug_folder, citation_chapters): chapter_file
+                        for chapter_file in chapter_files
+                    }
+                    
+                    # Collect results as they complete
+                    for future in as_completed(future_to_chapter):
+                        chapter_file = future_to_chapter[future]
+                        try:
+                            chapter_file_result, citation_data, papers = future.result()
+                            if citation_data:
+                                citation_data_by_chapter[chapter_file_result] = citation_data
+                                all_papers.extend(papers)
+                                logger.info(f"Completed citation processing for {chapter_file_result}")
+                        except Exception as e:
+                            logger.error(f"Error processing citations for {chapter_file}: {str(e)}")
             
             if not all_papers:
                 logger.warning("No citations were generated for any chapter")
@@ -85,7 +91,13 @@ class CitationGenerator:
             bibtex_file = os.path.join(debug_folder, "references.bib")
             bibtex_keys = self._export_bibtex(all_papers, bibtex_file)
             
-            # Update each chapter with citations
+            # Update each chapter with its corresponding citations
+            # This loop iterates through each chapter and its citation data
+            # For each chapter, it:
+            # 1. Constructs the full path to the chapter file
+            # 2. Calls _update_chapter_citations to add citation references
+            # 3. The citations are added in the format [@citation_key]
+            # 4. The updated chapter is saved with a new filename in the debug folder
             for chapter_file, citation_data in citation_data_by_chapter.items():
                 chapter_path = os.path.join(debug_folder, chapter_file)
                 self._update_chapter_citations(
@@ -183,6 +195,72 @@ class CitationGenerator:
         except Exception as e:
             logger.error(f"Error in citation analysis: {e}")
             return {"sentences": []}
+    
+    def _process_single_chapter_task(self, chapter_file: str, debug_folder: str, citation_chapters: List[str]) -> tuple[str, Optional[Dict], List[Dict]]:
+        """Process a single chapter for citations (for concurrent execution).
+        
+        Args:
+            chapter_file: Name of the chapter file
+            debug_folder: Path to the debug folder
+            citation_chapters: List of chapters that need citations
+            
+        Returns:
+            Tuple of (chapter_file, citation_data, papers)
+        """
+        chapter_path = os.path.join(debug_folder, chapter_file)
+        chapter_name = chapter_file.replace('_chapter.md', '')
+        
+        # Only process citations for specific chapters
+        if chapter_name in citation_chapters:
+            logger.info(f"Processing citations for {chapter_file}")
+            
+            # Analyze chapter for citations
+            citation_data = self._analyze_chapter(chapter_path)
+            if citation_data:
+                # Generate citations
+                papers = self._generate_citations(citation_data)
+                return chapter_file, citation_data, papers
+            else:
+                return chapter_file, None, []
+        else:
+            # For non-citation chapters, just create the _cited version without modifications
+            base_name = os.path.splitext(os.path.basename(chapter_path))[0]
+            output_path = os.path.join(debug_folder, f"{base_name}_cited.md")
+            with open(chapter_path, "r", encoding="utf-8") as f:
+                text = f.read()
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(text)
+            logger.info(f"Created cited version without citations for {chapter_file}")
+            return chapter_file, None, []
+    
+    def _generate_citations_for_sentence(self, entry: Dict, max_results: int = 3) -> List[Dict]:
+        """Generate citations for a single sentence (for concurrent execution).
+        
+        Args:
+            entry: Citation entry containing sentence and key terms
+            max_results: Maximum number of papers per sentence
+            
+        Returns:
+            List of paper details for this sentence
+        """
+        papers = []
+        query = " ".join(entry["key_terms"]) + " [Title/Abstract]"
+        logger.info(f"Querying PubMed for sentence: '{query}'")
+        
+        pmids = self._search_pubmed(query, max_results)
+        if not pmids:
+            logger.warning(f"No results found for query: {query}")
+            return papers
+            
+        for pmid in pmids:
+            paper = self._fetch_paper_details(pmid)
+            if paper:
+                paper["sentence"] = entry["sentence"]  # Store the sentence for mapping
+                papers.append(paper)
+                logger.info(f"Added paper: {paper['title']} ({paper['year']})")
+            time.sleep(0.5)  # Respect API rate limits
+            
+        return papers
             
     def _generate_citations(self, citation_data: Dict, max_results: int = 3) -> List[Dict]:
         """Generate citations for identified sentences.
@@ -195,22 +273,17 @@ class CitationGenerator:
             List of paper details for citations
         """
         papers = []
-        for idx, entry in enumerate(citation_data.get("sentences", [])):
-            query = " ".join(entry["key_terms"]) + " [Title/Abstract]"
-            logger.info(f"Querying PubMed for sentence {idx + 1}: '{query}'")
+        sentences = citation_data.get("sentences", [])
+        
+        if not sentences:
+            return papers
             
-            pmids = self._search_pubmed(query, max_results)
-            if not pmids:
-                logger.warning(f"No results found for query: {query}")
-                continue
-                
-            for pmid in pmids:
-                paper = self._fetch_paper_details(pmid)
-                if paper:
-                    paper["sentence"] = entry["sentence"]  # Store the sentence for mapping
-                    papers.append(paper)
-                    logger.info(f"Added paper: {paper['title']} ({paper['year']})")
-                time.sleep(0.5)  # Respect API rate limits
+        # For citation generation, we use sequential processing to respect PubMed API rate limits
+        # Concurrent requests to PubMed could cause rate limiting issues
+        for idx, entry in enumerate(sentences):
+            logger.info(f"Processing sentence {idx + 1} of {len(sentences)}")
+            sentence_papers = self._generate_citations_for_sentence(entry, max_results)
+            papers.extend(sentence_papers)
                 
         return papers
         

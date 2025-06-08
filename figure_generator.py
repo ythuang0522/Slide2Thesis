@@ -4,6 +4,7 @@ import re
 import logging
 import glob
 from typing import Dict, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image
 from ai_api_interface import AIAPIInterface
 
@@ -27,11 +28,12 @@ class FigureGenerator:
         # Add a class-level dictionary to track figure IDs across all chapters
         self.global_figure_ids = {}
         
-    def process_chapters(self, debug_folder: str) -> bool:
+    def process_chapters(self, debug_folder: str, threads: int = 1) -> bool:
         """Process markdown files to add figure references.
         
         Args:
             debug_folder: Path to the debug folder containing chapter files
+            threads: Number of threads to use for concurrent processing (default: 1)
             
         Returns:
             bool: True if processing was successful, False otherwise
@@ -41,7 +43,7 @@ class FigureGenerator:
             self.global_figure_ids = {}
             
             # Find all cited chapter markdown files for methods and results
-            target_chapters = ['introduction', 'methods', 'results']
+            target_chapters = ['introduction', 'methods', 'results', 'appendix']
             chapter_files = []
             
             for chapter in target_chapters:
@@ -62,19 +64,31 @@ class FigureGenerator:
             # Get extracted text for context
             extracted_text = self._load_extracted_text(debug_folder)
             
-            # Process each chapter
-            for chapter_file in chapter_files:
-                logger.info(f"Processing figures for {os.path.basename(chapter_file)}")
-                
-                # Analyze chapter for figure references
-                figure_data = self._analyze_chapter_for_figures(chapter_file, figure_images, extracted_text)
-                if figure_data:
-                    # Update chapter with figure references
-                    logger.debug(f"Figure data: {figure_data}")
-                    self._update_chapter_figures(chapter_file, figure_data, debug_folder)
-                    logger.info(f"Added figure references to {os.path.basename(chapter_file)}")
-                else:
-                    logger.warning(f"No figure references identified for {os.path.basename(chapter_file)}")
+            # Process chapters
+            if threads <= 1:
+                # Sequential processing (original behavior)
+                logger.info("Processing chapters sequentially for figure references...")
+                for chapter_file in chapter_files:
+                    self._process_single_chapter_for_figures(chapter_file, figure_images, extracted_text, debug_folder)
+            else:
+                # Concurrent processing
+                logger.info(f"Processing chapters concurrently for figure references using {threads} threads...")
+                with ThreadPoolExecutor(max_workers=threads) as executor:
+                    # Submit all chapter processing tasks
+                    future_to_chapter = {
+                        executor.submit(self._process_single_chapter_for_figures, chapter_file, figure_images, extracted_text, debug_folder): chapter_file
+                        for chapter_file in chapter_files
+                    }
+                    
+                    # Collect results as they complete
+                    for future in as_completed(future_to_chapter):
+                        chapter_file = future_to_chapter[future]
+                        try:
+                            success = future.result()
+                            if success:
+                                logger.info(f"Completed figure processing for {os.path.basename(chapter_file)}")
+                        except Exception as e:
+                            logger.error(f"Error processing figures for {chapter_file}: {str(e)}")
             
             logger.info("Successfully processed all chapters for figure references")
             return True
@@ -159,6 +173,37 @@ class FigureGenerator:
         except Exception as e:
             logger.error(f"Error analyzing chapter {chapter_path} for figures: {e}")
             return None
+    
+    def _process_single_chapter_for_figures(self, chapter_file: str, figure_images: Dict[str, str], extracted_text: Dict[str, str], debug_folder: str) -> bool:
+        """Process a single chapter for figure references (for concurrent execution).
+        
+        Args:
+            chapter_file: Path to the chapter file
+            figure_images: Dictionary of available figure images
+            extracted_text: Dictionary of extracted text for each figure
+            debug_folder: Path to debug folder
+            
+        Returns:
+            bool: True if processing was successful, False otherwise
+        """
+        try:
+            logger.info(f"Processing figures for {os.path.basename(chapter_file)}")
+            
+            # Analyze chapter for figure references
+            figure_data = self._analyze_chapter_for_figures(chapter_file, figure_images, extracted_text)
+            if figure_data:
+                # Update chapter with figure references
+                logger.debug(f"Figure data: {figure_data}")
+                self._update_chapter_figures(chapter_file, figure_data, debug_folder)
+                logger.info(f"Added figure references to {os.path.basename(chapter_file)}")
+                return True
+            else:
+                logger.warning(f"No figure references identified for {os.path.basename(chapter_file)}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error processing figures for {chapter_file}: {e}")
+            return False
     
     def _analyze_figures(self, text: str, figure_images: Dict[str, str], 
                         extracted_text: Dict[str, str]) -> Dict:

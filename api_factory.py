@@ -31,8 +31,7 @@ def create_ai_api(
     provider: Optional[str] = None,
     model: Optional[str] = None,
     gemini_api_key: Optional[str] = None,
-    openai_api_key: Optional[str] = None,
-    api_key: Optional[str] = None  # Backward compatibility
+    openai_api_key: Optional[str] = None
 ) -> AIAPIInterface:
     """Create an AI API instance based on provider and model.
     
@@ -41,7 +40,6 @@ def create_ai_api(
         model: Model name. If None, use default for the provider.
         gemini_api_key: Gemini API key.
         openai_api_key: OpenAI API key.
-        api_key: Legacy API key (used as gemini_api_key for backward compatibility).
         
     Returns:
         AIAPIInterface instance.
@@ -49,10 +47,6 @@ def create_ai_api(
     Raises:
         ValueError: If provider/model combination is invalid or API key is missing.
     """
-    # Handle backward compatibility
-    if api_key and not gemini_api_key:
-        gemini_api_key = api_key
-    
     # Get API keys from environment if not provided
     gemini_api_key = gemini_api_key or os.getenv('GEMINI_API_KEY')
     openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')

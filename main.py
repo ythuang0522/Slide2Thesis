@@ -36,7 +36,7 @@ def setup_debug_folder(pdf_path: str) -> str:
     return debug_folder
 
 def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai_api_key=None, 
-               api_key=None, email=None, run_all=True, extract_text=False, 
+               email=None, threads=1, run_all=True, extract_text=False, 
                categorize_pages=False, generate_chapters=False, add_citations=False, 
                add_figures=False, generate_yaml=False, compile_thesis=False):
     """Process a PDF file and return the path to the debug folder."""
@@ -62,8 +62,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
         provider=provider,
         model=model,
         gemini_api_key=gemini_api_key,
-        openai_api_key=openai_api_key,
-        api_key=api_key  # Backward compatibility
+        openai_api_key=openai_api_key
     )
     
     logger.info(f"Using {ai_api.provider_name} provider with model: {ai_api.model_name}")
@@ -86,20 +85,20 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
 
         logger.info("Step 3: Generating chapters...")
         generator = ChapterGenerator(ai_api)
-        generated_chapters = generator.generate_all_chapters(debug_folder)
+        generated_chapters = generator.generate_all_chapters(debug_folder, threads=threads)
         if not generated_chapters:
             logger.error("Chapter generation failed")
             raise RuntimeError("Chapter generation failed")
 
         logger.info("Step 4: Adding citations to chapters...")
         citation_gen = CitationGenerator(ai_api, email)
-        if not citation_gen.process_chapters(debug_folder):
+        if not citation_gen.process_chapters(debug_folder, threads=threads):
             logger.error("Citation generation failed")
             raise RuntimeError("Citation generation failed")
 
         logger.info("Step 5: Adding figure references to chapters...")
         figure_gen = FigureGenerator(ai_api)
-        if not figure_gen.process_chapters(debug_folder):
+        if not figure_gen.process_chapters(debug_folder, threads=threads):
             logger.error("Figure reference generation failed")
             raise RuntimeError("Figure reference generation failed")
 
@@ -139,7 +138,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
         if generate_chapters:
             logger.info("Step 3: Generating chapters...")
             generator = ChapterGenerator(ai_api)
-            generated_chapters = generator.generate_all_chapters(debug_folder)
+            generated_chapters = generator.generate_all_chapters(debug_folder, threads=threads)
             if not generated_chapters:
                 logger.error("Chapter generation failed")
                 raise RuntimeError("Chapter generation failed")
@@ -148,7 +147,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
         if add_citations:
             logger.info("Step 4: Adding citations to chapters...")
             citation_gen = CitationGenerator(ai_api, email)
-            if not citation_gen.process_chapters(debug_folder):
+            if not citation_gen.process_chapters(debug_folder, threads=threads):
                 logger.error("Citation generation failed")
                 raise RuntimeError("Citation generation failed")
             logger.info("Citation generation completed successfully!")
@@ -156,7 +155,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
         if add_figures:
             logger.info("Step 5: Adding figure references to chapters...")
             figure_gen = FigureGenerator(ai_api)
-            if not figure_gen.process_chapters(debug_folder):
+            if not figure_gen.process_chapters(debug_folder, threads=threads):
                 logger.error("Figure reference generation failed")
                 raise RuntimeError("Figure reference generation failed")
             logger.info("Figure reference generation completed successfully!")
@@ -191,19 +190,16 @@ def main():
     # API Provider and Model arguments
     parser.add_argument('--provider', choices=['gemini', 'openai', 'auto'], default='auto',
                        help='AI API provider to use (default: auto-detect from model)')
-    parser.add_argument('--model', help='Model name to use (auto-detects provider if not specified)')
+    parser.add_argument('-m', '--model', help='Model name to use (auto-detects provider if not specified)')
     
     # API Key arguments
-    parser.add_argument('--api-key', help='Legacy API key (used as Gemini API key for backward compatibility)')
     parser.add_argument('--gemini-api-key', help='Gemini API key (optional if GEMINI_API_KEY is set in .env)')
     parser.add_argument('--openai-api-key', help='OpenAI API key (optional if OPENAI_API_KEY is set in .env)')
     
     # Other arguments
-    parser.add_argument('--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
-    
-    # Legacy model arguments (for backward compatibility)
-    parser.add_argument('--gemini-model', help='Gemini model name (deprecated, use --model instead)')
-    
+    parser.add_argument('-e', '--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
+    parser.add_argument('-t', '--threads', type=int, default=6, help='Number of threads for concurrent processing (default: 6)')
+        
     # Step selection arguments
     parser.add_argument('--extract-text', action='store_true', help='Extract text from PDF')
     parser.add_argument('--categorize-pages', action='store_true', help='Categorize pages')
@@ -226,11 +222,7 @@ def main():
     if args.verbose:
         logger.info("Debug logging enabled")
 
-    # Handle legacy --gemini-model argument
     model = args.model
-    if args.gemini_model and not model:
-        model = args.gemini_model
-        logger.warning("--gemini-model is deprecated, use --model instead")
 
     # Check if we should run all steps
     run_all = not any([args.extract_text, args.categorize_pages, args.generate_chapters, 
@@ -243,8 +235,8 @@ def main():
             model=model,
             gemini_api_key=args.gemini_api_key,
             openai_api_key=args.openai_api_key,
-            api_key=args.api_key,
-            email=args.email, 
+            email=args.email,
+            threads=args.threads,
             run_all=run_all,
             extract_text=args.extract_text,
             categorize_pages=args.categorize_pages,

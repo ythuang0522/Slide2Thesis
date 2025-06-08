@@ -122,7 +122,7 @@ def process_pdf_background(job_id, file_path, api_key, email):
         ai_api = create_ai_api(
             provider='gemini',  # Default to Gemini for web interface
             model='gemini-2.5-pro-preview-06-05',
-            api_key=api_key  # Use legacy parameter for backward compatibility
+            gemini_api_key=api_key
         )
         
         # Call the main processing function with periodic status updates
@@ -147,7 +147,7 @@ def process_pdf_background(job_id, file_path, api_key, email):
             # Step 3: Generate chapters
             jobs[job_id]['message'] = "Step 3: Generating chapters..."
             generator = ChapterGenerator(ai_api)
-            generated_chapters = generator.generate_all_chapters(debug_folder)
+            generated_chapters = generator.generate_all_chapters(debug_folder, threads=4)
             if not generated_chapters:
                 raise RuntimeError("Chapter generation failed")
             update_status_from_logs()
@@ -155,14 +155,14 @@ def process_pdf_background(job_id, file_path, api_key, email):
             # Step 4: Add citations
             jobs[job_id]['message'] = "Step 4: Adding citations to chapters..."
             citation_gen = CitationGenerator(ai_api, email)
-            if not citation_gen.process_chapters(debug_folder):
+            if not citation_gen.process_chapters(debug_folder, threads=4):
                 raise RuntimeError("Citation generation failed")
             update_status_from_logs()
             
             # Step 5: Add figures
             jobs[job_id]['message'] = "Step 5: Adding figure references to chapters..."
             figure_gen = FigureGenerator(ai_api)
-            if not figure_gen.process_chapters(debug_folder):
+            if not figure_gen.process_chapters(debug_folder, threads=4):
                 raise RuntimeError("Figure reference generation failed")
             update_status_from_logs()
             
