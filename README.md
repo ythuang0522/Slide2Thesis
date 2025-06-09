@@ -1,19 +1,15 @@
 # Slide2Thesis
 
-A tool that automatically generates a thesis document from a PDF presentation using AI APIs (Google Gemini or OpenAI ChatGPT).
+A tool that automatically generates a thesis Latex/PDF from a PDF presentation using AI APIs (Google Gemini or OpenAI ChatGPT).
 
 ## Features
 
 - Extract text and images from PDF slides
-- Categorize slides into logical sections
 - Generate thesis chapters from slide content
-- Add citations and references with **flexible citation styles**
-- **CSL (Citation Style Language) support** with popular academic styles
+- Add citations and references with flexible citation styles
 - Generate figures and tables
 - Compile a complete thesis document in PDF format
-- **Automatic References section generation**
-- Web interface for easy uploading and processing
-- Command-line interface with extensive options
+- Web interface for uploading and processing
 
 ## System Architecture
 
@@ -104,7 +100,7 @@ The system supports both web interface and command-line interface with flexible 
    pip install -r requirements.txt
    ```
 
-3. Install additional dependencies:
+3. Install compilers (pandoc, pandoc-crossref, and tectonic):
    ```
    conda install -c conda-forge pandoc
    conda install tectonic
@@ -113,14 +109,7 @@ The system supports both web interface and command-line interface with flexible 
    brew install pandoc-crossref
    
    # For Linux (Debian/Ubuntu)
-   sudo apt-get install pandoc-crossref
-   
-   # For Linux (Fedora/RHEL/CentOS)
-   sudo dnf install pandoc-crossref
-   
-   # Alternative for any system: Install via cabal (Haskell package manager)
-   cabal update
-   cabal install pandoc-crossref
+   sudo apt-get install pandoc-crossref   
    ```
 
 ## Usage
@@ -172,15 +161,6 @@ Step Selection (if none specified, runs all steps):
 ```bash
 # Use default ACM style
 python main.py presentation.pdf
-
-# Use Nature style (biology/life sciences)
-python main.py presentation.pdf -s CSL/nature.csl
-
-# Use IEEE style (engineering/computer science)
-python main.py presentation.pdf -s CSL/ieee.csl
-
-# Use PLOS Biology style (open access biology)
-python main.py presentation.pdf -s CSL/plos-biology.csl
 ```
 
 #### Available Citation Styles:
@@ -198,11 +178,10 @@ python main.py presentation.pdf --provider auto
 python main.py presentation.pdf --provider gemini
 
 # Use OpenAI ChatGPT with specific model
-python main.py presentation.pdf --provider openai --model gpt-4
+python main.py presentation.pdf --provider openai --model gpt-4.1
 
 # Auto-detect provider from model name
-python main.py presentation.pdf --model gemini-1.5-flash
-python main.py presentation.pdf --model gpt-3.5-turbo
+python main.py presentation.pdf --model gemini-2.5-flash
 ```
 
 #### Step-by-Step Processing:
@@ -239,12 +218,6 @@ python main.py presentation.pdf \
   --openai-api-key YOUR_OPENAI_KEY \
   --threads 4 \
   --style CSL/ieee.csl
-
-# Run only citation and compilation steps
-python main.py presentation.pdf \
-  --add-citations \
-  --compile \
-  --style CSL/plos-biology.csl
 ```
 
 ### Web Interface
@@ -261,11 +234,7 @@ Then open your browser and navigate to http://127.0.0.1:5000 to access the web i
 - `main.py`: Main script orchestrating the thesis generation process
 - `app.py`: Flask web application for the web interface
 - `templates/`: HTML templates for the web interface
-- **`CSL/`**: Citation Style Language files for different academic formats
-  - `acm-sig-proceedings.csl`: ACM conference style (default)
-  - `ieee.csl`: IEEE journal/conference style
-  - `nature.csl`: Nature journal style
-  - `plos-biology.csl`: PLOS Biology journal style
+- `CSL/`: Citation Style Language files for different academic formats
 - `text_extractor.py`: Extracts text from PDF presentations
 - `page_classifier.py`: Categorizes pages into logical sections
 - `chapter_generator.py`: Generates thesis chapters
