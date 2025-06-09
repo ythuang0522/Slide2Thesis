@@ -40,11 +40,12 @@ class ChapterGenerator:
         1. Carefully review all provided page contents and write a world-class thesis for this {chapter_type} chapter.
         2. If necessary, fill in gaps with logical transitions or additional information that strengthens the chapter's narrative.
         3. **Organize the chapter using markdown format** into clearly defined sections and, if applicable, subheadings that reflect its purpose. 
-        4. Whenever outputting mathematical equations, remember to wrap them with a single pair of dollar signs for inline equations and a double pair for displayed equations.
-        4. Ensure the chapter follows a logical progression that guides the reader through the main points effectively.
-        4. Academic Tone and Rigor: Write in a formal, objective, and precise academic style suitable for a graduate-level thesis. 
-        5. Don't include any source information (e.g., page numbers, slides, figure numbers, etc.) and figure reference links.
-        6. Always start the markdown with a chapter title (e.g., # Introduction, # Related Works, # Methods, # Results, # Conclusions, # Appendix)
+        4. Do NOT include explicit chapter or section numbers in your markdown headers (e.g., use "## Overview" instead of "## 3.1 Overview"). LaTeX will automatically number all sections.
+        5. Whenever outputting mathematical equations, remember to wrap them with a single pair of dollar signs for inline equations and a double pair for displayed equations.
+        6. Ensure the chapter follows a logical progression that guides the reader through the main points effectively.
+        7. Academic Tone and Rigor: Write in a formal, objective, and precise academic style suitable for a graduate-level thesis. 
+        8. Don't include any source information (e.g., page numbers, slides, figure numbers, etc.) and figure reference links.
+        9. Always start the markdown with a chapter title (e.g., # Introduction, # Related Works, # Methods, # Results, # Conclusions, # Appendix)
         """
 
         # Define chapter-specific guidelines
@@ -134,7 +135,7 @@ class ChapterGenerator:
         2. Ensure consistent academic tone throughout
         3. Maintain all technical content, equations, and important information
         4. Keep the same markdown formatting structure
-        5. Preserve all section headings
+        5. Preserve all section headings but **REMOVE any explicit chapter or section numbers** (e.g., change "## 3.1 Overview" to "## Overview")
         6. Keep equations in LaTeX format ($ for inline, $$ for display)
         7. Ensure the writing flows naturally between sections
         8. Remove apparent editing artifacts (e.g., "Here's the expanded chapter text")

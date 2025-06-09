@@ -523,20 +523,20 @@ class CitationGenerator:
                             break
                     
                     if ending_punctuation:
-                        # Insert citation before the punctuation
+                        # Insert citation before the punctuation with non-breaking space
                         sentence_without_punct = sentence[:-1]
                         escaped_punct = re.escape(ending_punctuation)
                         updated_text = re.sub(
                             f"{re.escape(sentence_without_punct)}{escaped_punct}(?!\\s*\\[@)",
-                            f"{sentence_without_punct} {citation}{ending_punctuation}",
+                            f"{sentence_without_punct}&nbsp;{citation}{ending_punctuation}",
                             updated_text,
                             count=1
                         )
                     else:
-                        # For sentences without punctuation, add citation at the end (original behavior)
+                        # For sentences without punctuation, add citation at the end with non-breaking space
                         updated_text = re.sub(
                             f"{re.escape(sentence)}(?!\\s*\\[@)",
-                            f"{sentence} {citation}",
+                            f"{sentence}&nbsp;{citation}",
                             updated_text,
                             count=1
                         )

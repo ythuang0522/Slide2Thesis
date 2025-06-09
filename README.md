@@ -6,7 +6,7 @@ A tool that automatically generates a thesis Latex/PDF from a PDF presentation u
 
 - Extract text and images from PDF slides
 - Generate thesis chapters from slide content
-- Add citations and references with flexible citation styles
+- Add citations and references using traditional LaTeX bibliography
 - Generate figures and tables
 - Compile a complete thesis document in PDF format
 - Web interface for uploading and processing
@@ -30,7 +30,6 @@ flowchart LR
     subgraph inputs [" "]
         A
         K[📧 PubMed API]
-        L[🎨 CSL Styles]
     end
 
     subgraph processing ["🔄 Core Pipeline"]
@@ -48,7 +47,6 @@ flowchart LR
     end
 
     F -.-> K
-    I -.-> L
     B -.-> C
     B -.-> D
     B -.-> E
@@ -61,7 +59,7 @@ flowchart LR
     classDef outputStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:3px,color:#000,font-size:24px,font-weight:bold
     classDef apiStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000,font-size:24px,font-weight:bold
 
-    class A,L inputStyle
+    class A inputStyle
     class C,D,E,F,G,H,I processStyle
     class J outputStyle
     class B,K apiStyle
@@ -77,10 +75,10 @@ The system follows a streamlined 7-step pipeline:
 4. **📖 Citation Addition**: Automatically adds relevant academic citations via PubMed
 5. **🖼️ Figure Integration**: Adds figure references and captions to chapters
 6. **📋 Metadata Creation**: Generates YAML metadata for the thesis document
-7. **🔨 PDF Compilation**: Compiles everything into a final PDF using Pandoc + Tectonic with **CSL citation styles**
+7. **🔨 PDF Compilation**: Compiles everything into a final PDF using Pandoc + Tectonic with **traditional LaTeX bibliography**
 
 The diagram uses modern styling with:
-- **Blue**: Input (PDF slides, CSL styles)
+- **Blue**: Input (PDF slides)
 - **Purple**: Core processing steps
 - **Green**: Final output (thesis)
 - **Orange**: External APIs (AI & PubMed)
@@ -145,7 +143,6 @@ AI Provider & Model:
 Processing Options:
   -e EMAIL, --email EMAIL     Email for PubMed API (or set PUBMED_EMAIL in .env)
   -t THREADS, --threads THREADS  Number of concurrent threads (default: 6)
-  -s STYLE, --style STYLE     CSL citation style file (default: CSL/acm-sig-proceedings.csl)
   
 Step Selection (if none specified, runs all steps):
   --extract-text              Extract text from PDF only
@@ -157,17 +154,12 @@ Step Selection (if none specified, runs all steps):
   --compile                   Compile thesis PDF only
 ```
 
-#### Citation Style Selection:
-```bash
-# Use default ACM style
-python main.py presentation.pdf
-```
-
-#### Available Citation Styles:
-- **ACM SIG Proceedings** (`CSL/acm-sig-proceedings.csl`) - Default, computer science
-- **IEEE** (`CSL/ieee.csl`) - Engineering and computer science
-- **Nature** (`CSL/nature.csl`) - Biology and life sciences
-- **PLOS Biology** (`CSL/plos-biology.csl`) - Open access biology
+#### Bibliography Style:
+The system uses traditional LaTeX bibliography with BibTeX. You can customize the bibliography style by modifying the `\bibliographystyle{}` command in the LaTex template. Common styles include:
+- **plain** - Default numbered style
+- **ieeetr** - IEEE style for engineering
+- **alpha** - Author-year with labels
+- **apalike** - APA-like style
 
 #### AI Provider Selection:
 ```bash
@@ -208,7 +200,6 @@ python main.py presentation.pdf \
   --gemini-api-key YOUR_GEMINI_KEY \
   --email your.email@domain.com \
   --threads 8 \
-  --style CSL/nature.csl \
   --verbose
 
 # Process with OpenAI and custom threading
@@ -216,8 +207,7 @@ python main.py presentation.pdf \
   --provider openai \
   --model gpt-4 \
   --openai-api-key YOUR_OPENAI_KEY \
-  --threads 4 \
-  --style CSL/ieee.csl
+  --threads 4
 ```
 
 ### Web Interface
@@ -234,14 +224,14 @@ Then open your browser and navigate to http://127.0.0.1:5000 to access the web i
 - `main.py`: Main script orchestrating the thesis generation process
 - `app.py`: Flask web application for the web interface
 - `templates/`: HTML templates for the web interface
-- `CSL/`: Citation Style Language files for different academic formats
+
 - `text_extractor.py`: Extracts text from PDF presentations
 - `page_classifier.py`: Categorizes pages into logical sections
 - `chapter_generator.py`: Generates thesis chapters
 - `citation_generator.py`: Adds relevant citations
 - `figure_generator.py`: Processes and references figures
 - `yaml_metadata_generator.py`: Creates YAML metadata
-- `thesis_compiler.py`: Compiles the final thesis document with CSL support
+- `thesis_compiler.py`: Compiles the final thesis document using traditional LaTeX bibliography
 - `gemini_api.py`: Wrapper for Google's Gemini API
 - `openai_api.py`: Wrapper for OpenAI's ChatGPT API
 - `api_factory.py`: Factory for AI API selection

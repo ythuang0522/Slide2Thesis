@@ -1,0 +1,131 @@
+\documentclass[a4paper, 11pt, oneside]{Thesis}
+
+% Add required packages for wallpaper and Chinese support
+\usepackage{wallpaper}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+
+% Auto-detect and set Chinese fonts (works on Windows, macOS, Linux)
+% Try fonts in order of preference
+\IfFontExistsTF{Microsoft YaHei}{
+  \setCJKmainfont{Microsoft YaHei}  % Windows default
+}{
+  \IfFontExistsTF{PingFang TC}{
+    \setCJKmainfont{PingFang TC}    % macOS default  
+  }{
+    \IfFontExistsTF{SimSun}{
+      \setCJKmainfont{SimSun}       % Windows fallback
+    }{
+      % Let xeCJK auto-detect any available CJK font
+      \xeCJKsetup{AutoFakeBold=true, AutoFakeSlant=true}
+    }
+  }
+}
+
+% Add packages required by pandoc-generated content
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{calc}
+\usepackage{graphicx}
+\usepackage{fp}  % For \real command in table calculations
+
+% Set default graphics parameters to prevent oversized images
+% You can adjust these values to control the default figure sizes
+\setkeys{Gin}{width=0.8\linewidth,height=0.6\textheight,keepaspectratio}
+
+% Set wallpaper for all pages
+\CenterWallPaper{.45}{CCU.pdf}
+
+% Define pandocbounded macro for pandoc 3.2.1+ compatibility
+% This macro ensures all images are constrained to reasonable sizes
+\makeatletter
+\def\pandocbounded#1{%
+  \begingroup
+  % Override any existing includegraphics settings to ensure proper sizing
+  \setkeys{Gin}{width=0.8\linewidth,height=0.6\textheight,keepaspectratio}%
+  #1%
+  \endgroup
+}
+\makeatother
+
+% Define \real command for table calculations (used by pandoc)
+\makeatletter
+\def\real#1{#1}
+\makeatother
+
+% Traditional LaTeX bibliography - no CSL at all
+% Load natbib for better citation support
+\usepackage[numbers,sort&compress]{natbib}
+
+% Document metadata from pandoc variables
+\title{$title$}
+\authors{$author$}
+$if(degree)$\degree{$degree$}$endif$
+$if(supervisor)$\supervisor{$supervisor$}$endif$
+$if(examiner)$\examiner{$examiner$}$endif$
+$if(university)$\university{$university$}$endif$
+$if(department)$\department{$department$}$endif$
+$if(group)$\group{$group$}$endif$
+$if(faculty)$\faculty{$faculty$}$endif$
+$if(addresses)$\addresses{$addresses$}$endif$
+$if(subject)$\subject{$subject$}$endif$
+$if(keywords)$\keywords{$keywords$}$endif$
+
+\begin{document}
+
+\frontmatter
+\maketitle
+
+$if(acknowledgements-zh)$
+\btypeout{Chinese Acknowledgements Page}
+\thispagestyle{empty}
+\vfil\null
+\begin{center}
+  {\huge{\textit{誌謝}} \par}
+  \bigskip
+\end{center}
+{\normalsize $acknowledgements-zh$}
+\vfil\vfil\vfil\null
+\cleardoublepage
+$endif$
+
+$if(abstract-zh)$
+\btypeout{Chinese Abstract Page}
+\thispagestyle{empty}
+\vfil\null
+\begin{center}
+  {\huge{\textit{摘要}} \par}
+  \bigskip
+\end{center}
+{\normalsize $abstract-zh$}
+\vfil\vfil\vfil\null
+\cleardoublepage
+$endif$
+
+$if(abstract)$
+\begin{abstract}
+$abstract$
+\end{abstract}
+$endif$
+
+\tableofcontents
+$if(lof)$\listoffigures$endif$
+$if(lot)$\listoftables$endif$
+$if(symbols)$\listofsymbols{$symbols.format$}{$symbols.content$}$endif$
+
+\mainmatter
+$body$
+
+% Bibliography section using traditional LaTeX
+% The \bibliography command will automatically create the heading
+\bibliographystyle{plain}  % You can change this to other styles like ieeetr, alpha, etc.
+\bibliography{references}  % This will include the references.bib file
+
+% Add bibliography to table of contents and set page header
+\addcontentsline{toc}{chapter}{Bibliography}
+\lhead{\emph{Bibliography}}
+
+\backmatter
+
+\end{document} 

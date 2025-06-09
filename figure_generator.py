@@ -515,11 +515,11 @@ class FigureGenerator:
                         # Store the ID for this chapter-filename combination
                         self.global_figure_ids[chapter_file_key] = figure_id
                     
-                    # Create the reference text - use end-of-sentence style
-                    reference_text = f" (Figure @fig:{figure_id})"
+                    # Create the reference text - let pandoc-crossref handle the prefix
+                    reference_text = f" (@fig:{figure_id})"
                     
                     # Check if the sentence already has a figure reference
-                    if not re.search(r'Figure @fig:', sentence):
+                    if not re.search(r'@fig:', sentence):
                         # Replace the sentence with the referenced version
                         # First, we need to handle LaTeX math expressions
                         # Find all math expressions in the sentence
