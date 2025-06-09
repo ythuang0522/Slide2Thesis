@@ -36,7 +36,7 @@ def setup_debug_folder(pdf_path: str) -> str:
     return debug_folder
 
 def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai_api_key=None, 
-               email=None, threads=1, run_all=True, extract_text=False, 
+               email=None, threads=1, csl_style=None, run_all=True, extract_text=False, 
                categorize_pages=False, generate_chapters=False, add_citations=False, 
                add_figures=False, generate_yaml=False, compile_thesis=False):
     """Process a PDF file and return the path to the debug folder."""
@@ -110,7 +110,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
 
         logger.info("Step 7: Compiling thesis...")
         compiler = ThesisCompiler()
-        if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf):
+        if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf, csl_style=csl_style):
             logger.error("Thesis compilation failed")
             raise RuntimeError("Thesis compilation failed")
 
@@ -171,7 +171,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
         if compile_thesis:
             logger.info("Step 7: Compiling thesis...")
             compiler = ThesisCompiler()
-            if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf):
+            if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf, csl_style=csl_style):
                 logger.error("Thesis compilation failed")
                 raise RuntimeError("Thesis compilation failed")
             logger.info("Thesis compilation completed successfully!")
@@ -199,6 +199,8 @@ def main():
     # Other arguments
     parser.add_argument('-e', '--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
     parser.add_argument('-t', '--threads', type=int, default=6, help='Number of threads for concurrent processing (default: 6)')
+    parser.add_argument('-s', '--style', dest='csl_style', default='CSL/acm-sig-proceedings.csl',
+                       help='CSL style file for citations (default: CSL/acm-sig-proceedings.csl). Available: CSL/nature.csl, CSL/ieee.csl, CSL/plos-biology.csl')
         
     # Step selection arguments
     parser.add_argument('--extract-text', action='store_true', help='Extract text from PDF')
@@ -237,6 +239,7 @@ def main():
             openai_api_key=args.openai_api_key,
             email=args.email,
             threads=args.threads,
+            csl_style=args.csl_style,
             run_all=run_all,
             extract_text=args.extract_text,
             categorize_pages=args.categorize_pages,

@@ -147,13 +147,14 @@ class FigureGenerator:
         return {}
     
     def _analyze_chapter_for_figures(self, chapter_path: str, figure_images: Dict[str, str], 
-                                    extracted_text: Dict[str, str]) -> Optional[Dict]:
+                                    extracted_text: Dict[str, str], debug_folder: str) -> Optional[Dict]:
         """Analyze a chapter file for sentences that should reference figures.
         
         Args:
             chapter_path: Path to the chapter markdown file
             figure_images: Dictionary of available figure images
             extracted_text: Dictionary of extracted text for each figure
+            debug_folder: Path to the debug folder
             
         Returns:
             Dictionary containing figure analysis or None if analysis fails
@@ -165,8 +166,12 @@ class FigureGenerator:
         try:
             with open(chapter_path, "r", encoding="utf-8") as f:
                 chapter_text = f.read()
+            
+            # Extract chapter name from file path (e.g., "introduction_chapter_cited.md" -> "introduction")
+            chapter_filename = os.path.basename(chapter_path)
+            chapter_name = chapter_filename.split('_')[0]  # Get the first part before underscore
                 
-            figure_data = self._analyze_figures(chapter_text, figure_images, extracted_text)
+            figure_data = self._analyze_figures(chapter_text, figure_images, extracted_text, chapter_name, debug_folder)
             logger.info(f"Analyzed figure references for {os.path.basename(chapter_path)}")
             return figure_data
             
@@ -190,7 +195,7 @@ class FigureGenerator:
             logger.info(f"Processing figures for {os.path.basename(chapter_file)}")
             
             # Analyze chapter for figure references
-            figure_data = self._analyze_chapter_for_figures(chapter_file, figure_images, extracted_text)
+            figure_data = self._analyze_chapter_for_figures(chapter_file, figure_images, extracted_text, debug_folder)
             if figure_data:
                 # Update chapter with figure references
                 logger.debug(f"Figure data: {figure_data}")
@@ -205,24 +210,80 @@ class FigureGenerator:
             logger.error(f"Error processing figures for {chapter_file}: {e}")
             return False
     
+    def _get_chapter_page_numbers(self, debug_folder: str, chapter_name: str) -> List[str]:
+        """Extract page numbers for a specific chapter from section file.
+        
+        Args:
+            debug_folder: Path to the debug folder
+            chapter_name: Name of the chapter (e.g., 'introduction', 'methods')
+            
+        Returns:
+            List of page numbers that belong to this chapter
+        """
+        page_numbers = []
+        section_file = os.path.join(debug_folder, f"{chapter_name}_section.txt")
+        
+        if not os.path.exists(section_file):
+            logger.warning(f"Section file not found: {section_file}")
+            return page_numbers
+            
+        try:
+            with open(section_file, "r", encoding="utf-8") as f:
+                content = f.read()
+            
+            # Extract page numbers from lines like "Page 1:", "Page 2:", etc.
+            page_pattern = r'Page (\d+):'
+            matches = re.findall(page_pattern, content)
+            page_numbers = list(set(matches))  # Remove duplicates
+            
+            logger.debug(f"Found {len(page_numbers)} pages for {chapter_name} chapter: {page_numbers}")
+            return page_numbers
+            
+        except Exception as e:
+            logger.error(f"Error reading section file {section_file}: {e}")
+            return page_numbers
+
     def _analyze_figures(self, text: str, figure_images: Dict[str, str], 
-                        extracted_text: Dict[str, str]) -> Dict:
+                        extracted_text: Dict[str, str], chapter_name: str, debug_folder: str) -> Dict:
         """Analyze text for sentences that should reference figures using AI.
         
         Args:
             text: Text content to analyze
             figure_images: Dictionary of available figure images
             extracted_text: Dictionary of extracted text for each figure
+            chapter_name: Name of the current chapter being processed
+            debug_folder: Path to the debug folder
             
         Returns:
             Dictionary containing figure analysis
         """
-        # Prepare context about available figures
+        # Get page numbers for this chapter from the section file
+        chapter_page_numbers = self._get_chapter_page_numbers(debug_folder, chapter_name)
+        logger.info(f"Chapter name: {chapter_name}")
+        logger.info(f"Chapter page numbers: {chapter_page_numbers}")
+        
+        if not chapter_page_numbers:
+            logger.warning(f"No pages found for {chapter_name} chapter, using all figures as fallback")
+            chapter_specific_text = extracted_text
+        else:
+            # Filter extracted_text to only include this chapter's pages
+            chapter_specific_text = {}
+            for image_name, image_text in extracted_text.items():
+                # Extract page number from image name (e.g., "page_5.jpg" -> "5")
+                page_match = re.search(r'page_(\d+)\.jpg', image_name)
+                if page_match:
+                    page_num = page_match.group(1)
+                    if page_num in chapter_page_numbers:
+                        chapter_specific_text[image_name] = image_text
+            
+            logger.info(f"Filtered to {len(chapter_specific_text)} figures for {chapter_name} chapter (from {len(extracted_text)} total)")
+        
+        # Prepare context about available figures (now chapter-specific)
         figure_context = ""
-        for image_name, image_text in extracted_text.items():
+        for image_name, image_text in chapter_specific_text.items():
             figure_context += f"Figure {image_name}:\n{image_text}\n\n"
         
-        prompt = f"""Analyze the following figure context and thesis text, identify sentences in thesis text that should reference figures in the figure context.
+        prompt = f"""Analyze the following figure context and chapter text, identify sentences in chapter text that should reference figures in the figure context.
         Focus on sentences in the thesis text that:
         1. Describe visual data or results (charts, graphs, diagrams, etc.)
         2. Refer to experimental setups or methodologies that are better illustrated

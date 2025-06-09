@@ -512,12 +512,34 @@ class CitationGenerator:
                     # Join multiple citation keys with semicolons
                     citations = "; ".join([f"@{key}" for key in bibtex_keys[sentence]])
                     citation = f"[{citations}]"
-                    updated_text = re.sub(
-                        f"{re.escape(sentence)}(?!\\s*\\[@)",
-                        f"{sentence} {citation}",
-                        updated_text,
-                        count=1
-                    )
+                    
+                    # Check if sentence ends with punctuation (period, comma, or semicolon)
+                    punctuation_marks = ['.', ',', ';']
+                    ending_punctuation = None
+                    
+                    for punct in punctuation_marks:
+                        if sentence.endswith(punct):
+                            ending_punctuation = punct
+                            break
+                    
+                    if ending_punctuation:
+                        # Insert citation before the punctuation
+                        sentence_without_punct = sentence[:-1]
+                        escaped_punct = re.escape(ending_punctuation)
+                        updated_text = re.sub(
+                            f"{re.escape(sentence_without_punct)}{escaped_punct}(?!\\s*\\[@)",
+                            f"{sentence_without_punct} {citation}{ending_punctuation}",
+                            updated_text,
+                            count=1
+                        )
+                    else:
+                        # For sentences without punctuation, add citation at the end (original behavior)
+                        updated_text = re.sub(
+                            f"{re.escape(sentence)}(?!\\s*\\[@)",
+                            f"{sentence} {citation}",
+                            updated_text,
+                            count=1
+                        )
                     
             # Save with consistent naming that matches thesis_compiler.py expectations
             chapter_name = os.path.basename(chapter_path).replace('_chapter.md', '')
