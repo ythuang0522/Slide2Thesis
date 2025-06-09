@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+import concurrent.futures
 from typing import Dict, Optional, List
 from ai_api_interface import AIAPIInterface
 
@@ -163,21 +164,26 @@ class YamlMetadataGenerator:
                 with open(intro_file, 'r', encoding='utf-8') as f:
                     intro_content = f.read()
             
-            # extract metadata from introduction
-            metadata = self.extract_metadata_from_intro(intro_content)
-            logger.debug(metadata)
-
-            # Generate Chinese acknowledgements
-            acknowledgements = self.generate_acknowledgements()
-            logger.info("Generated Chinese acknowledgements")
-            logger.debug(acknowledgements)
-
-            # Generate English abstract
-            abstract = self.generate_english_abstract(chapters_content)
-            logger.info("Generated English abstract")
-            logger.debug(abstract)
+            # Run metadata extraction, acknowledgements, and abstract generation in parallel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                # Submit tasks
+                metadata_future = executor.submit(self.extract_metadata_from_intro, intro_content)
+                acknowledgements_future = executor.submit(self.generate_acknowledgements)
+                abstract_future = executor.submit(self.generate_english_abstract, chapters_content)
+                
+                # Get results
+                metadata = metadata_future.result()
+                logger.debug(metadata)
+                
+                acknowledgements = acknowledgements_future.result()
+                logger.info("Generated Chinese acknowledgements")
+                logger.debug(acknowledgements)
+                
+                abstract = abstract_future.result()
+                logger.info("Generated English abstract")
+                logger.debug(abstract)
             
-            # Generate Chinese abstract
+            # Generate Chinese abstract (depends on English abstract, so run after)
             chinese_abstract = self.generate_chinese_abstract(abstract)
             logger.info("Generated Traditional Chinese abstract")
             logger.debug(chinese_abstract)
