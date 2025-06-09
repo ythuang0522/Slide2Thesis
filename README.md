@@ -89,7 +89,7 @@ The diagram uses modern styling with:
 - **Green**: Final output (thesis)
 - **Orange**: External APIs (AI & PubMed)
 
-The system supports both web interface and command-line interface with flexible AI provider support (Gemini/OpenAI) and **multiple citation styles**.
+The system supports both web interface and command-line interface with flexible AI provider support (Gemini/OpenAI).
 
 ## Installation
 
@@ -125,35 +125,62 @@ The system supports both web interface and command-line interface with flexible 
 
 ## Usage
 
-### Web Interface
-
-Start the web server:
-```bash
-python app.py
-```
-
-Then open your browser and navigate to http://127.0.0.1:5000 to access the web interface.
-
 ### Command Line Interface
 
 #### Basic Usage:
 ```bash
+# Run all steps with default settings
 python main.py path/to/your/presentation.pdf
+
+# Enable verbose logging
+python main.py path/to/your/presentation.pdf -v
+```
+
+#### Complete Argument Reference:
+```bash
+python main.py PDF_FILE [OPTIONS]
+
+Required:
+  PDF_FILE                    Path to the input PDF presentation
+
+Optional Arguments:
+  -h, --help                  Show help message and exit
+  -v, --verbose               Enable debug logging
+  
+AI Provider & Model:
+  --provider {gemini,openai,auto}  AI API provider (default: auto-detect)
+  -m MODEL, --model MODEL     Model name (auto-detects provider if not specified)
+  --gemini-api-key KEY        Gemini API key (or set GEMINI_API_KEY in .env)
+  --openai-api-key KEY        OpenAI API key (or set OPENAI_API_KEY in .env)
+  
+Processing Options:
+  -e EMAIL, --email EMAIL     Email for PubMed API (or set PUBMED_EMAIL in .env)
+  -t THREADS, --threads THREADS  Number of concurrent threads (default: 6)
+  -s STYLE, --style STYLE     CSL citation style file (default: CSL/acm-sig-proceedings.csl)
+  
+Step Selection (if none specified, runs all steps):
+  --extract-text              Extract text from PDF only
+  --categorize-pages          Categorize pages only
+  --generate-chapters         Generate chapters only
+  --add-citations             Add citations to chapters only
+  --add-figures               Add figure references only
+  --generate-yaml             Generate YAML metadata only
+  --compile                   Compile thesis PDF only
 ```
 
 #### Citation Style Selection:
 ```bash
 # Use default ACM style
-python main.py path/to/your/presentation.pdf
+python main.py presentation.pdf
 
 # Use Nature style (biology/life sciences)
-python main.py path/to/your/presentation.pdf -s CSL/nature.csl
+python main.py presentation.pdf -s CSL/nature.csl
 
 # Use IEEE style (engineering/computer science)
-python main.py path/to/your/presentation.pdf -s CSL/ieee.csl
+python main.py presentation.pdf -s CSL/ieee.csl
 
 # Use PLOS Biology style (open access biology)
-python main.py path/to/your/presentation.pdf -s CSL/plos-biology.csl
+python main.py presentation.pdf -s CSL/plos-biology.csl
 ```
 
 #### Available Citation Styles:
@@ -164,44 +191,70 @@ python main.py path/to/your/presentation.pdf -s CSL/plos-biology.csl
 
 #### AI Provider Selection:
 ```bash
-# Use Google Gemini (default)
+# Auto-detect provider (default)
+python main.py presentation.pdf --provider auto
+
+# Use Google Gemini explicitly
 python main.py presentation.pdf --provider gemini
 
-# Use OpenAI ChatGPT
+# Use OpenAI ChatGPT with specific model
 python main.py presentation.pdf --provider openai --model gpt-4
+
+# Auto-detect provider from model name
+python main.py presentation.pdf --model gemini-1.5-flash
+python main.py presentation.pdf --model gpt-3.5-turbo
 ```
 
 #### Step-by-Step Processing:
 ```bash
-# Extract text only
-python main.py path/to/your/presentation.pdf --extract-text
+# Run individual steps
+python main.py presentation.pdf --extract-text
+python main.py presentation.pdf --categorize-pages
+python main.py presentation.pdf --generate-chapters
+python main.py presentation.pdf --add-citations
+python main.py presentation.pdf --add-figures
+python main.py presentation.pdf --generate-yaml
+python main.py presentation.pdf --compile
 
-# Generate chapters only
-python main.py path/to/your/presentation.pdf --generate-chapters
-
-# Add citations only
-python main.py path/to/your/presentation.pdf --add-citations
-
-# Add figures only
-python main.py path/to/your/presentation.pdf --add-figures
-
-# Create YAML metadata
-python main.py path/to/your/presentation.pdf --generate-yaml
-
-# Compile the final thesis with specific citation style
-python main.py path/to/your/presentation.pdf --compile -s CSL/nature.csl
+# Combine multiple steps
+python main.py presentation.pdf --generate-chapters --add-citations --compile
 ```
 
-#### Advanced Options:
+#### Advanced Examples:
 ```bash
-# Full command with all options
+# Full configuration with all options
 python main.py presentation.pdf \
   --provider gemini \
-  --gemini-api-key YOUR_KEY \
+  --model gemini-1.5-flash \
+  --gemini-api-key YOUR_GEMINI_KEY \
   --email your.email@domain.com \
   --threads 8 \
-  --style CSL/nature.csl
+  --style CSL/nature.csl \
+  --verbose
+
+# Process with OpenAI and custom threading
+python main.py presentation.pdf \
+  --provider openai \
+  --model gpt-4 \
+  --openai-api-key YOUR_OPENAI_KEY \
+  --threads 4 \
+  --style CSL/ieee.csl
+
+# Run only citation and compilation steps
+python main.py presentation.pdf \
+  --add-citations \
+  --compile \
+  --style CSL/plos-biology.csl
 ```
+
+### Web Interface
+
+Start the web server:
+```bash
+python app.py
+```
+
+Then open your browser and navigate to http://127.0.0.1:5000 to access the web interface.
 
 ## Project Structure
 
