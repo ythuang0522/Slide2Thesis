@@ -24,6 +24,7 @@ from yaml_metadata_generator import YamlMetadataGenerator
 from thesis_compiler import ThesisCompiler
 from citation_generator import CitationGenerator
 from figure_generator import FigureGenerator
+from style_manager import StyleManager
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ def setup_debug_folder(pdf_path: str) -> str:
     return debug_folder
 
 def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai_api_key=None, 
-               email=None, threads=1, run_all=True, extract_text=False, 
+               email=None, threads=1, style='thesis', run_all=True, extract_text=False, 
                categorize_pages=False, generate_chapters=False, add_citations=False, 
                add_figures=False, generate_yaml=False, compile_thesis=False):
     """Process a PDF file and return the path to the debug folder."""
@@ -103,13 +104,13 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
             raise RuntimeError("Figure reference generation failed")
 
         logger.info("Step 6: Generating YAML metadata...")
-        metadata_gen = YamlMetadataGenerator(ai_api)
+        metadata_gen = YamlMetadataGenerator(ai_api, style=style)
         if not metadata_gen.generate_metadata(debug_folder, metadata_file):
             logger.error("YAML metadata generation failed")
             raise RuntimeError("YAML metadata generation failed")
 
         logger.info("Step 7: Compiling thesis...")
-        compiler = ThesisCompiler()
+        compiler = ThesisCompiler(style=style)
         if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf):
             logger.error("Thesis compilation failed")
             raise RuntimeError("Thesis compilation failed")
@@ -162,7 +163,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
             
         if generate_yaml:
             logger.info("Step 6: Generating YAML metadata...")
-            metadata_gen = YamlMetadataGenerator(ai_api)
+            metadata_gen = YamlMetadataGenerator(ai_api, style=style)
             if not metadata_gen.generate_metadata(debug_folder, metadata_file):
                 logger.error("YAML metadata generation failed")
                 raise RuntimeError("YAML metadata generation failed")
@@ -170,7 +171,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
             
         if compile_thesis:
             logger.info("Step 7: Compiling thesis...")
-            compiler = ThesisCompiler()
+            compiler = ThesisCompiler(style=style)
             if not compiler.compile_thesis(debug_folder, metadata_file, output_pdf):
                 logger.error("Thesis compilation failed")
                 raise RuntimeError("Thesis compilation failed")
@@ -184,7 +185,7 @@ def main():
     load_dotenv()
     
     parser = argparse.ArgumentParser(description='Generate a thesis from a PDF presentation.')
-    parser.add_argument('pdf_file', help='Path to the input PDF')
+    parser.add_argument('pdf_file', nargs='?', help='Path to the input PDF')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable debug logging')
     
     # API Provider and Model arguments
@@ -195,6 +196,12 @@ def main():
     # API Key arguments
     parser.add_argument('--gemini-api-key', help='Gemini API key (optional if GEMINI_API_KEY is set in .env)')
     parser.add_argument('--openai-api-key', help='OpenAI API key (optional if OPENAI_API_KEY is set in .env)')
+    
+    # Style arguments
+    parser.add_argument('--style', choices=StyleManager.list_styles(), default='thesis',
+                       help='Output style: thesis (default) or nature journal')
+    parser.add_argument('--list-styles', action='store_true',
+                       help='List available output styles')
     
     # Other arguments
     parser.add_argument('-e', '--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
@@ -211,6 +218,14 @@ def main():
     parser.add_argument('--compile', action='store_true', help='Compile thesis PDF')
     
     args = parser.parse_args()
+    
+    # Handle list-styles option
+    if args.list_styles:
+        print("Available output styles:")
+        for style in StyleManager.list_styles():
+            style_config = StyleManager.get_style_config(style)
+            print(f"  {style}: {style_config['metadata_type']} format")
+        return 0
 
     # Set up logging level based on verbose flag
     log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -222,6 +237,10 @@ def main():
     
     if args.verbose:
         logger.info("Debug logging enabled")
+    
+    # Check if pdf_file is required but not provided
+    if not args.pdf_file and not args.list_styles:
+        parser.error("pdf_file is required unless using --list-styles")
 
     model = args.model
 
@@ -238,6 +257,7 @@ def main():
             openai_api_key=args.openai_api_key,
             email=args.email,
             threads=args.threads,
+            style=args.style,
             run_all=run_all,
             extract_text=args.extract_text,
             categorize_pages=args.categorize_pages,

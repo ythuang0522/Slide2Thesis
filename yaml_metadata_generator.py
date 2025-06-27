@@ -4,6 +4,7 @@ import time
 import concurrent.futures
 from typing import Dict, Optional, List
 from ai_api_interface import AIAPIInterface
+from style_manager import StyleManager
 
 # Set up logging
 logging.basicConfig(
@@ -15,13 +16,16 @@ logger = logging.getLogger(__name__)
 class YamlMetadataGenerator:
     """Generates YAML metadata for the thesis."""
     
-    def __init__(self, ai_api: AIAPIInterface):
+    def __init__(self, ai_api: AIAPIInterface, style: str = 'thesis'):
         """Initialize the YamlMetadataGenerator.
         
         Args:
             ai_api: Instance of AIAPIInterface for metadata generation.
+            style: Style name ('thesis' or 'nature').
         """
         self.ai_api = ai_api
+        self.style = style
+        self.style_config = StyleManager.get_style_config(style)
         
     def extract_metadata_from_intro(self, intro_content: str) -> Dict[str, str]:
         """Extract title, author, and advisor from introduction content.
@@ -141,6 +145,22 @@ class YamlMetadataGenerator:
         Returns:
             True if metadata generation succeeds, False otherwise.
         """
+        # Route to appropriate metadata generation method
+        if self.style == 'nature':
+            return self._generate_nature_metadata(chapters_dir, output_file)
+        else:
+            return self._generate_thesis_metadata(chapters_dir, output_file)
+    
+    def _generate_thesis_metadata(self, chapters_dir: str, output_file: str) -> bool:
+        """Generate thesis metadata (original implementation).
+        
+        Args:
+            chapters_dir: Directory containing chapter files.
+            output_file: Path to write the YAML metadata file.
+            
+        Returns:
+            True if metadata generation succeeds, False otherwise.
+        """
         try:
             # Read chapter contents
             chapters_content = {}
@@ -235,4 +255,91 @@ class YamlMetadataGenerator:
             
         except Exception as e:
             logger.error(f"Error generating YAML metadata: {e}")
+            return False
+    
+    def _generate_nature_metadata(self, chapters_dir: str, output_file: str) -> bool:
+        """Generate Nature journal metadata.
+        
+        Args:
+            chapters_dir: Directory containing chapter files.
+            output_file: Path to write the YAML metadata file.
+            
+        Returns:
+            True if metadata generation succeeds, False otherwise.
+        """
+        try:
+            # Read chapter contents
+            chapters_content = {}
+            chapter_order = ['introduction', 'methods', 'results', 'conclusions']
+            
+            for chapter_type in chapter_order:
+                chapter_file = os.path.join(chapters_dir, f"{chapter_type.lower().replace(' ', '_')}_chapter_cited.md")
+                if os.path.exists(chapter_file):
+                    with open(chapter_file, 'r', encoding='utf-8') as f:
+                        chapters_content[chapter_type] = f.read()
+                        
+            if not chapters_content:
+                logger.error("No chapter files found")
+                return False
+                
+            # Extract metadata from introduction
+            intro_file = os.path.join(chapters_dir, "introduction_section.txt")
+            intro_content = ""
+            if os.path.exists(intro_file):
+                with open(intro_file, 'r', encoding='utf-8') as f:
+                    intro_content = f.read()
+            
+            # Run metadata extraction and abstract generation in parallel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                metadata_future = executor.submit(self.extract_metadata_from_intro, intro_content)
+                abstract_future = executor.submit(self.generate_english_abstract, chapters_content)
+                
+                metadata = metadata_future.result()
+                logger.debug(metadata)
+                
+                abstract = abstract_future.result()
+                logger.info("Generated English abstract")
+                logger.debug(abstract)
+            
+            # Create Nature journal YAML content
+            yaml_template = "---\n"
+            yaml_template += f'title: "{metadata["title"]}"\n'
+            
+            # Nature journal author format
+            yaml_template += "authors:\n"
+            yaml_template += f'  - given_name: "{metadata["author"].split()[0] if metadata["author"] else "First"}"\n'
+            yaml_template += f'    family_name: "{" ".join(metadata["author"].split()[1:]) if len(metadata["author"].split()) > 1 else "Author"}"\n'
+            yaml_template += f'    email: "author@example.com"\n'
+            
+            # Affiliations
+            yaml_template += "affiliations:\n"
+            yaml_template += "  - department: \"Department\"\n"
+            yaml_template += "    organization: \"Institution\"\n"
+            
+            # Abstract for Nature (single paragraph)
+            yaml_template += "abstract: |\n"
+            # Ensure single paragraph by replacing newlines with spaces
+            clean_abstract = " ".join(abstract.strip().replace('\n', ' ').split())
+            yaml_template += f"  {clean_abstract}\n"
+            
+            # Keywords (simplified)
+            yaml_template += "keywords: \"research, analysis, methodology\"\n"
+            
+            # Document class settings
+            yaml_template += "documentclass: sn-jnl\n"
+            yaml_template += "classoption: [pdflatex, sn-nature]\n"
+            yaml_template += "bibliography: references\n"
+            yaml_template += "biblio-style: sn-nature\n"
+            
+            yaml_template += "---\n"
+            
+            # Save the YAML content
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(yaml_template)
+                
+            logger.info(f"Generated Nature journal YAML metadata: {output_file}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error generating Nature metadata: {e}")
             return False 

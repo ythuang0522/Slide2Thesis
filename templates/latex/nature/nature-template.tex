@@ -1,0 +1,64 @@
+\documentclass[pdflatex,sn-nature]{sn-jnl}
+
+% Standard packages for Nature journals
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{textcomp}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{calc}
+\usepackage{tabularx}
+
+% Define pandocbounded macro for pandoc compatibility
+\makeatletter
+\def\pandocbounded#1{%
+  \begingroup
+  % Override any existing includegraphics settings to ensure proper sizing
+  \setkeys{Gin}{width=1.0\linewidth,height=1.0\textheight,keepaspectratio}%
+  #1%
+  \endgroup
+}
+\makeatother
+
+\begin{document}
+
+\title{$title$}
+
+$if(authors)$
+$for(authors)$
+$if(authors.given_name)$
+\author{\fnm{$authors.given_name$} \sur{$authors.family_name$}}$if(authors.email)$\email{$authors.email$}$endif$
+$else$
+\author{\fnm{$authors$} \sur{Author}}
+$endif$
+$endfor$
+$else$
+\author{\fnm{$author$} \sur{}}
+$endif$
+
+$if(affiliations)$
+$for(affiliations)$
+\affil{\orgdiv{$affiliations.department$}, \orgname{$affiliations.organization$}}
+$endfor$
+$else$
+\affil{\orgdiv{Department}, \orgname{Institution}}
+$endif$
+
+$if(abstract)$
+\abstract{$abstract$}
+$endif$
+
+$if(keywords)$
+\keywords{$keywords$}
+$endif$
+
+\maketitle
+
+$body$
+
+\bibliographystyle{sn-nature}
+\bibliography{references}
+
+\end{document} 

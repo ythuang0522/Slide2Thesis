@@ -1,14 +1,17 @@
 # Slide2Thesis
 
-A tool that automatically generates a thesis Latex/PDF from a PDF presentation using AI APIs (Google Gemini or OpenAI ChatGPT).
+A tool that automatically generates academic documents (thesis or journal papers) in LaTeX/PDF format from PDF presentations using AI APIs (Google Gemini or OpenAI ChatGPT).
 
 ## Features
 
+- **Multi-Style Support**: Generate documents in different academic formats:
+  - **Thesis format**: Traditional university thesis with chapters
+  - **Nature journal format**: Scientific journal papers (Nature, Science, etc.)
 - Extract text and images from PDF slides
-- Generate thesis chapters from slide content
+- Generate structured content from slide material
 - Add citations and references using traditional LaTeX bibliography
-- Generate figures and tables
-- Compile a complete thesis document in PDF format
+- Generate figures and tables with proper referencing
+- Compile complete academic documents in PDF format
 - Web interface for uploading and processing
 
 ## System Architecture
@@ -116,8 +119,14 @@ The system supports both web interface and command-line interface with flexible 
 
 #### Basic Usage:
 ```bash
-# Run all steps with default settings
+# Generate thesis document (default: --style thesis)
 python main.py path/to/your/presentation.pdf
+
+# Generate Nature journal paper
+python main.py path/to/your/presentation.pdf --style nature
+
+# List available output styles
+python main.py --list-styles
 
 # Enable verbose logging
 python main.py path/to/your/presentation.pdf -v
@@ -139,6 +148,10 @@ AI Provider & Model:
   -m MODEL, --model MODEL     Model name (auto-detects provider if not specified)
   --gemini-api-key KEY        Gemini API key (or set GEMINI_API_KEY in .env)
   --openai-api-key KEY        OpenAI API key (or set OPENAI_API_KEY in .env)
+
+Output Style:
+  --style {thesis,nature}     Output document style (default: thesis)
+  --list-styles               List all available output styles
   
 Processing Options:
   -e EMAIL, --email EMAIL     Email for PubMed API (or set PUBMED_EMAIL in .env)
@@ -154,12 +167,25 @@ Step Selection (if none specified, runs all steps):
   --compile                   Compile thesis PDF only
 ```
 
-#### Bibliography Style:
-The system uses traditional LaTeX bibliography with BibTeX. You can customize the bibliography style by modifying the `\bibliographystyle{}` command in the LaTex template. Common styles include:
-- **plain** - Default numbered style
-- **ieeetr** - IEEE style for engineering
-- **alpha** - Author-year with labels
-- **apalike** - APA-like style
+#### Output Styles:
+The system supports multiple academic document formats:
+
+**Thesis Style (default)**:
+- Traditional university thesis format with chapters
+- Uses custom Thesis.cls document class
+- Supports Chinese/English abstracts and acknowledgments
+- Bibliography style: plain (numbered references)
+
+**Nature Journal Style**:
+- Scientific journal paper format (Nature, Science, etc.)
+- Uses Springer Nature sn-jnl.cls document class
+- Single-column layout with journal-specific formatting
+- Bibliography style: sn-nature (author-year citations)
+
+You can list all available styles:
+```bash
+python main.py --list-styles
+```
 
 #### AI Provider Selection:
 ```bash
@@ -169,8 +195,8 @@ python main.py presentation.pdf --provider auto
 # Use Google Gemini explicitly
 python main.py presentation.pdf --provider gemini
 
-# Use OpenAI ChatGPT with specific model
-python main.py presentation.pdf --provider openai --model gpt-4.1
+# Use OpenAI ChatGPT with specific model for Nature paper
+python main.py presentation.pdf --provider openai --model gpt-4.1 --style nature
 
 # Auto-detect provider from model name
 python main.py presentation.pdf --model gemini-2.5-flash
@@ -187,8 +213,8 @@ python main.py presentation.pdf --add-figures
 python main.py presentation.pdf --generate-yaml
 python main.py presentation.pdf --compile
 
-# Combine multiple steps
-python main.py presentation.pdf --generate-chapters --add-citations --compile
+# Combine multiple steps with Nature style
+python main.py presentation.pdf --generate-chapters --add-citations --compile --style nature
 ```
 
 #### Advanced Examples:
@@ -202,11 +228,12 @@ python main.py presentation.pdf \
   --threads 8 \
   --verbose
 
-# Process with OpenAI and custom threading
+# Process Nature paper with OpenAI and custom threading
 python main.py presentation.pdf \
   --provider openai \
   --model gpt-4 \
   --openai-api-key YOUR_OPENAI_KEY \
+  --style nature \
   --threads 4
 ```
 
@@ -221,20 +248,57 @@ Then open your browser and navigate to http://127.0.0.1:5000 to access the web i
 
 ## Project Structure
 
-- `main.py`: Main script orchestrating the thesis generation process
+### Core Scripts
+- `main.py`: Main script orchestrating the document generation process
 - `app.py`: Flask web application for the web interface
-- `templates/`: HTML templates for the web interface
+- `style_manager.py`: Manages different output styles and templates
 
+### Processing Modules
 - `text_extractor.py`: Extracts text from PDF presentations
 - `page_classifier.py`: Categorizes pages into logical sections
-- `chapter_generator.py`: Generates thesis chapters
+- `chapter_generator.py`: Generates structured content chapters
 - `citation_generator.py`: Adds relevant citations
 - `figure_generator.py`: Processes and references figures
-- `yaml_metadata_generator.py`: Creates YAML metadata
-- `thesis_compiler.py`: Compiles the final thesis document using traditional LaTeX bibliography
+- `yaml_metadata_generator.py`: Creates style-specific YAML metadata
+- `thesis_compiler.py`: Compiles the final document using traditional LaTeX bibliography
+
+### AI APIs
 - `gemini_api.py`: Wrapper for Google's Gemini API
 - `openai_api.py`: Wrapper for OpenAI's ChatGPT API
 - `api_factory.py`: Factory for AI API selection
+
+### Templates & Assets
+- `templates/`
+  - `latex/thesis/`: Thesis document class and template files
+  - `latex/nature/`: Nature journal class and template files
+  - `*.html`: Web interface templates
+
+## Adding New Document Styles
+
+The system is designed to be easily extensible with new academic formats. To add a new journal or document style:
+
+1. **Create template directory**: `templates/latex/your_style/`
+2. **Add required files**:
+   - `your_style-template.tex`: LaTeX template with pandoc variables
+   - Document class files (`.cls`)
+   - Bibliography style files (`.bst`)
+   - Any additional assets
+
+3. **Update style configuration** in `style_manager.py`:
+   ```python
+   'your_style': {
+       'document_class': 'your_class',
+       'template_file': 'templates/latex/your_style/your_style-template.tex',
+       'template_dir': 'templates/latex/your_style',
+       'bibliography_style': 'your_bib_style',
+       'required_files': ['your_class.cls', 'your_bib_style.bst'],
+       'metadata_type': 'journal'  # or 'thesis'
+   }
+   ```
+
+4. **Add metadata generation** (if needed) in `yaml_metadata_generator.py`
+
+The style system automatically handles file copying and pandoc configuration.
 
 ## Testing
 

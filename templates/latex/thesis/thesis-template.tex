@@ -32,7 +32,7 @@
 
 % Set default graphics parameters to prevent oversized images
 % You can adjust these values to control the default figure sizes
-\setkeys{Gin}{width=0.8\linewidth,height=0.6\textheight,keepaspectratio}
+\setkeys{Gin}{width=1.0\linewidth,height=1.0\textheight,keepaspectratio}
 
 % Set wallpaper for all pages
 \CenterWallPaper{.45}{CCU.pdf}
@@ -43,7 +43,7 @@
 \def\pandocbounded#1{%
   \begingroup
   % Override any existing includegraphics settings to ensure proper sizing
-  \setkeys{Gin}{width=0.8\linewidth,height=0.6\textheight,keepaspectratio}%
+  \setkeys{Gin}{width=1.0\linewidth,height=1.0\textheight,keepaspectratio}%
   #1%
   \endgroup
 }
