@@ -248,24 +248,30 @@ Then open your browser and navigate to http://127.0.0.1:5000 to access the web i
 
 ## Project Structure
 
-### Core Scripts
-- `main.py`: Main script orchestrating the document generation process
+### Entry Points (Root Level)
+- `main.py`: Main CLI script orchestrating the document generation process
 - `app.py`: Flask web application for the web interface
-- `style_manager.py`: Manages different output styles and templates
 
-### Processing Modules
+### Source Code Organization (`src/`)
+
+#### AI API Modules (`src/ai/`)
+- `ai_api_interface.py`: Abstract base class for AI API implementations
+- `gemini_api.py`: Wrapper for Google's Gemini API
+- `openai_api.py`: Wrapper for OpenAI's ChatGPT API
+- `api_factory.py`: Factory for AI API selection and auto-detection
+
+#### Processing Pipeline (`src/processors/`)
 - `text_extractor.py`: Extracts text from PDF presentations
 - `page_classifier.py`: Categorizes pages into logical sections
 - `chapter_generator.py`: Generates structured content chapters
-- `citation_generator.py`: Adds relevant citations
+- `citation_generator.py`: Adds relevant citations via PubMed API
 - `figure_generator.py`: Processes and references figures
 - `yaml_metadata_generator.py`: Creates style-specific YAML metadata
 - `thesis_compiler.py`: Compiles the final document using traditional LaTeX bibliography
 
-### AI APIs
-- `gemini_api.py`: Wrapper for Google's Gemini API
-- `openai_api.py`: Wrapper for OpenAI's ChatGPT API
-- `api_factory.py`: Factory for AI API selection
+#### Utilities (`src/utils/`)
+- `style_manager.py`: Manages different output styles and templates
+- `math_formatter.py`: Mathematical expression formatting utilities
 
 ### Templates & Assets
 - `templates/`
@@ -299,20 +305,6 @@ The system is designed to be easily extensible with new academic formats. To add
 4. **Add metadata generation** (if needed) in `yaml_metadata_generator.py`
 
 The style system automatically handles file copying and pandoc configuration.
-
-## Testing
-
-Before running the tests, install the development dependencies:
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-The project uses `pytest`. Run the test suite with:
-
-```bash
-pytest
-```
 
 ## License
 

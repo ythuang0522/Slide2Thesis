@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from Bio import Entrez
 import time
-from ai_api_interface import AIAPIInterface
+from ..ai.ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(

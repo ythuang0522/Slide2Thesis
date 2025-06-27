@@ -3,8 +3,8 @@ import logging
 import time
 import concurrent.futures
 from typing import Dict, Optional, List
-from ai_api_interface import AIAPIInterface
-from style_manager import StyleManager
+from ..ai.ai_api_interface import AIAPIInterface
+from ..utils.style_manager import StyleManager
 
 # Set up logging
 logging.basicConfig(

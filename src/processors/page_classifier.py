@@ -2,7 +2,7 @@ import os
 import logging
 import re
 from typing import Dict, Optional
-from ai_api_interface import AIAPIInterface
+from ..ai.ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(

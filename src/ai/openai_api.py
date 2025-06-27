@@ -6,7 +6,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from openai import OpenAI
 from PIL import Image
 from typing import Optional
-from ai_api_interface import AIAPIInterface
+from .ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(

@@ -1,9 +1,9 @@
 import os
 import logging
 from typing import Optional
-from ai_api_interface import AIAPIInterface
-from gemini_api import GeminiAPI
-from openai_api import OpenAIAPI
+from .ai_api_interface import AIAPIInterface
+from .gemini_api import GeminiAPI
+from .openai_api import OpenAIAPI
 
 logger = logging.getLogger(__name__)
 

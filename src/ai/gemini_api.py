@@ -5,7 +5,7 @@ from google import genai
 from google.genai import types
 from PIL import Image
 from typing import Optional, Union
-from ai_api_interface import AIAPIInterface
+from .ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(

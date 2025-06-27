@@ -10,14 +10,14 @@ import logging
 import sys
 
 # Import the necessary classes from your main application
-from api_factory import create_ai_api
-from text_extractor import TextExtractor
-from page_classifier import PageClassifier
-from chapter_generator import ChapterGenerator
-from yaml_metadata_generator import YamlMetadataGenerator
-from thesis_compiler import ThesisCompiler
-from citation_generator import CitationGenerator
-from figure_generator import FigureGenerator
+from src.ai.api_factory import create_ai_api
+from src.processors.text_extractor import TextExtractor
+from src.processors.page_classifier import PageClassifier
+from src.processors.chapter_generator import ChapterGenerator
+from src.processors.yaml_metadata_generator import YamlMetadataGenerator
+from src.processors.thesis_compiler import ThesisCompiler
+from src.processors.citation_generator import CitationGenerator
+from src.processors.figure_generator import FigureGenerator
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)

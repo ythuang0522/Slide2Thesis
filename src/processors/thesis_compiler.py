@@ -3,7 +3,7 @@ import logging
 import subprocess
 import shutil
 from typing import List
-from style_manager import StyleManager
+from ..utils.style_manager import StyleManager
 
 # Set up logging
 logging.basicConfig(

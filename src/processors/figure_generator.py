@@ -6,7 +6,7 @@ import glob
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image
-from ai_api_interface import AIAPIInterface
+from ..ai.ai_api_interface import AIAPIInterface
 
 # Set up logging
 logging.basicConfig(
