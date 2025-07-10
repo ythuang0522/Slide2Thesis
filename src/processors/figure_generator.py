@@ -134,7 +134,7 @@ class FigureGenerator:
         return figure_images
 
     def _crop_top(self, input_path: str, output_path: str) -> bool:
-        """Crop fixed pixels from top of image.
+        """Crop fixed pixels from top of image, then crop to content bounding box.
         
         Args:
             input_path: Path to original image
@@ -146,17 +146,44 @@ class FigureGenerator:
         try:
             with Image.open(input_path) as img:
                 width, height = img.size
-                
-                # Skip if crop would remove too much (keep at least 50px)
-                if self.crop_top_pixels >= height - 50:
-                    logger.warning(f"Crop amount ({self.crop_top_pixels}px) too large for image {input_path} (height: {height}px)")
-                    return False
-                    
+                                    
+                # Step 1: Crop fixed pixels from top
                 # Crop: (left, top, right, bottom)
                 cropped = img.crop((0, self.crop_top_pixels, width, height))
-                cropped.save(output_path, "JPEG", quality=95)
-                logger.debug(f"Cropped {self.crop_top_pixels}px from top of {input_path}")
-                return True
+                
+                # Step 2: Compute bounding box and crop to content
+                # Convert to grayscale for better thresholding
+                gray_image = cropped.convert('L')
+                
+                # Create binary mask (white=background, black=content)
+                mask = gray_image.point(lambda p: 0 if p > 245 else 1, mode="1")
+                
+                # Get bounding box of content
+                bbox = mask.getbbox()   # (left, upper, right, lower)
+                
+                if bbox:
+                    # Crop to bounding box with small padding
+                    left, upper, right, lower = bbox
+                    
+                    # Add small padding around content (5px on each side, but don't exceed image bounds)
+                    padding = 5
+                    left = max(0, left - padding)
+                    upper = max(0, upper - padding)
+                    right = min(cropped.width, right + padding)
+                    lower = min(cropped.height, lower + padding)
+                    
+                    # Apply the bounding box crop
+                    final_cropped = cropped.crop((left, upper, right, lower))
+                    final_cropped.save(output_path, "JPEG", quality=95)
+                    
+                    logger.debug(f"Cropped {self.crop_top_pixels}px from top and applied bounding box crop to {input_path}")
+                    return True
+                else:
+                    # If no bounding box found, save the top-cropped version
+                    logger.warning(f"No content bounding box found for {input_path}, using top crop only")
+                    cropped.save(output_path, "JPEG", quality=95)
+                    return True
+                    
         except Exception as e:
             logger.error(f"Error cropping image {input_path}: {e}")
             return False

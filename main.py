@@ -24,7 +24,7 @@ def setup_debug_folder(pdf_path: str) -> str:
     return debug_folder
 
 def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai_api_key=None, 
-               email=None, threads=1, style='thesis', crop_top_pixels=0, run_all=True, extract_text=False, 
+               email=None, threads=1, style='thesis', crop_top_pixels=240, run_all=True, extract_text=False, 
                categorize_pages=False, generate_chapters=False, add_citations=False, 
                add_figures=False, generate_yaml=False, compile_thesis=False):
     """Process a PDF file and return the path to the debug folder."""
@@ -193,7 +193,7 @@ def main():
     # Other arguments
     parser.add_argument('-e', '--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
     parser.add_argument('-t', '--threads', type=int, default=6, help='Number of threads for concurrent processing (default: 6)')
-    parser.add_argument('--crop-top-pixels', type=int, default=0, help='Number of pixels to crop from top of images (default: 0, no cropping)')
+    parser.add_argument('--crop-top-pixels', type=int, default=245, help='Number of pixels to crop from top of images (default: 240, no cropping)')
 
         
     # Step selection arguments
