@@ -161,7 +161,7 @@ def process_pdf_background(job_id, file_path, api_key, email):
             
             # Step 5: Add figures
             jobs[job_id]['message'] = "Step 5: Adding figure references to chapters..."
-            figure_gen = FigureGenerator(ai_api)
+            figure_gen = FigureGenerator(ai_api, crop_top_pixels=0)  # Default: no cropping for web interface
             if not figure_gen.process_chapters(debug_folder, threads=4):
                 raise RuntimeError("Figure reference generation failed")
             update_status_from_logs()

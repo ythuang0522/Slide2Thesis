@@ -18,13 +18,15 @@ logger = logging.getLogger(__name__)
 class FigureGenerator:
     """Identifies sentences that should reference figures and adds appropriate figure references."""
     
-    def __init__(self, ai_api: AIAPIInterface):
+    def __init__(self, ai_api: AIAPIInterface, crop_top_pixels: int = 0):
         """Initialize the FigureGenerator.
         
         Args:
             ai_api: Instance of AIAPIInterface for figure analysis
+            crop_top_pixels: Number of pixels to crop from top of images (default: 0, no cropping)
         """
         self.ai_api = ai_api
+        self.crop_top_pixels = crop_top_pixels
         # Add a class-level dictionary to track figure IDs across all chapters
         self.global_figure_ids = {}
         
@@ -104,16 +106,60 @@ class FigureGenerator:
             debug_folder: Path to the debug folder
             
         Returns:
-            Dictionary mapping image filenames to their full paths
+            Dictionary mapping original image filenames to their paths (cropped or original)
         """
         figure_images = {}
         image_pattern = os.path.join(debug_folder, "page_*.jpg")
         
+        # Regex to match only page_NUMBER.jpg (not page_NUMBER_cropped.jpg)
+        page_pattern = re.compile(r'^page_\d+\.jpg$')
+        
         for image_path in glob.glob(image_pattern):
-            image_name = os.path.basename(image_path)
-            figure_images[image_name] = image_path
+            image_name = os.path.basename(image_path)  # e.g., "page_1.jpg"
+            
+            # Only process files that match page_NUMBER.jpg pattern
+            if not page_pattern.match(image_name):
+                continue
+            
+            if self.crop_top_pixels > 0:
+                # Create cropped version
+                cropped_path = image_path.replace('.jpg', '_cropped.jpg')
+                if self._crop_top(image_path, cropped_path):
+                    figure_images[image_name] = cropped_path  # Key: page_1.jpg, Value: path/to/page_1_cropped.jpg
+                else:
+                    figure_images[image_name] = image_path  # Fallback to original
+            else:
+                figure_images[image_name] = image_path  # Key: page_1.jpg, Value: path/to/page_1.jpg
             
         return figure_images
+
+    def _crop_top(self, input_path: str, output_path: str) -> bool:
+        """Crop fixed pixels from top of image.
+        
+        Args:
+            input_path: Path to original image
+            output_path: Path to save cropped image
+            
+        Returns:
+            bool: True if cropping was successful, False otherwise
+        """
+        try:
+            with Image.open(input_path) as img:
+                width, height = img.size
+                
+                # Skip if crop would remove too much (keep at least 50px)
+                if self.crop_top_pixels >= height - 50:
+                    logger.warning(f"Crop amount ({self.crop_top_pixels}px) too large for image {input_path} (height: {height}px)")
+                    return False
+                    
+                # Crop: (left, top, right, bottom)
+                cropped = img.crop((0, self.crop_top_pixels, width, height))
+                cropped.save(output_path, "JPEG", quality=95)
+                logger.debug(f"Cropped {self.crop_top_pixels}px from top of {input_path}")
+                return True
+        except Exception as e:
+            logger.error(f"Error cropping image {input_path}: {e}")
+            return False
     
     def _load_extracted_text(self, debug_folder: str) -> Dict[str, str]:
         """Load extracted text from the extracted_text.txt file.
@@ -197,6 +243,14 @@ class FigureGenerator:
             # Analyze chapter for figure references
             figure_data = self._analyze_chapter_for_figures(chapter_file, figure_images, extracted_text, debug_folder)
             if figure_data:
+                # Update figure filenames to use cropped versions when cropping is enabled
+                if self.crop_top_pixels > 0:
+                    for entry in figure_data.get("figure_references", []):
+                        original_filename = entry["figure_filename"]
+                        if original_filename.endswith('.jpg'):
+                            cropped_filename = original_filename.replace('.jpg', '_cropped.jpg')
+                            entry["figure_filename"] = cropped_filename
+                
                 # Update chapter with figure references
                 logger.debug(f"Figure data: {figure_data}")
                 self._update_chapter_figures(chapter_file, figure_data, debug_folder)
@@ -289,6 +343,7 @@ class FigureGenerator:
         2. Refer to experimental setups or methodologies that are better illustrated
         3. Mention visual comparisons or trends
         4. Use visual phrases like "as shown", "illustrates", "plots", etc.
+        5. Avoid referencing figures mostly containing tables.
         
         Here is detailed information about the available figures (figure context) that can be referenced:
         
@@ -535,7 +590,7 @@ class FigureGenerator:
                         
                         # Replace the placeholders with the original math expressions
                         for idx, expr in enumerate(math_expressions):
-                            escaped_temp_sentence = escaped_temp_sentence.replace(f"MATH_PLACEHOLDER_{idx}", re.escape(expr))
+                            escaped_temp_sentence = escaped_temp_sentence.replace(f"MATH_PLACEHOLDER_{idx}", expr)
                         
                         # Add the reference at the end of the sentence, before any punctuation
                         if sentence.rstrip()[-1] in ['.', '?', '!']:

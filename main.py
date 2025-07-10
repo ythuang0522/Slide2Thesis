@@ -1,18 +1,5 @@
 #!/usr/bin/env python3
 
-# Installation instructions
-"""
-1. Install required libraries:
-   pip install -q -U google-genai
-   pip install pillow PyMuPDF tenacity biopython flask openai
-   conda install -c conda-forge pandoc
-   conda install tectonic
-   brew install pandoc-crossref
-2. Set your API keys as environment variables:
-   - GEMINI_API_KEY: Get from https://makersuite.google.com/app/apikey
-   - OPENAI_API_KEY: Get from https://platform.openai.com/api-keys
-"""
-
 import os
 import argparse
 import logging
@@ -37,7 +24,7 @@ def setup_debug_folder(pdf_path: str) -> str:
     return debug_folder
 
 def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai_api_key=None, 
-               email=None, threads=1, style='thesis', run_all=True, extract_text=False, 
+               email=None, threads=1, style='thesis', crop_top_pixels=0, run_all=True, extract_text=False, 
                categorize_pages=False, generate_chapters=False, add_citations=False, 
                add_figures=False, generate_yaml=False, compile_thesis=False):
     """Process a PDF file and return the path to the debug folder."""
@@ -98,7 +85,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
             raise RuntimeError("Citation generation failed")
 
         logger.info("Step 5: Adding figure references to chapters...")
-        figure_gen = FigureGenerator(ai_api)
+        figure_gen = FigureGenerator(ai_api, crop_top_pixels=crop_top_pixels)
         if not figure_gen.process_chapters(debug_folder, threads=threads):
             logger.error("Figure reference generation failed")
             raise RuntimeError("Figure reference generation failed")
@@ -155,7 +142,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
             
         if add_figures:
             logger.info("Step 5: Adding figure references to chapters...")
-            figure_gen = FigureGenerator(ai_api)
+            figure_gen = FigureGenerator(ai_api, crop_top_pixels=crop_top_pixels)
             if not figure_gen.process_chapters(debug_folder, threads=threads):
                 logger.error("Figure reference generation failed")
                 raise RuntimeError("Figure reference generation failed")
@@ -182,7 +169,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
 def main():
     """Main function to orchestrate the thesis generation process."""
     # Load environment variables
-    load_dotenv()
+    load_dotenv(override=True)
     
     parser = argparse.ArgumentParser(description='Generate a thesis from a PDF presentation.')
     parser.add_argument('pdf_file', nargs='?', help='Path to the input PDF')
@@ -206,6 +193,7 @@ def main():
     # Other arguments
     parser.add_argument('-e', '--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
     parser.add_argument('-t', '--threads', type=int, default=6, help='Number of threads for concurrent processing (default: 6)')
+    parser.add_argument('--crop-top-pixels', type=int, default=0, help='Number of pixels to crop from top of images (default: 0, no cropping)')
 
         
     # Step selection arguments
@@ -258,6 +246,7 @@ def main():
             email=args.email,
             threads=args.threads,
             style=args.style,
+            crop_top_pixels=args.crop_top_pixels,
             run_all=run_all,
             extract_text=args.extract_text,
             categorize_pages=args.categorize_pages,
