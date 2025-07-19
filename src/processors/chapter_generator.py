@@ -79,8 +79,8 @@ class ChapterGenerator:
 
             'appendix': """Chapter-Specific Considerations:
             - This is appendix of the thesis which includes supplementary information from pages after the conclusion. 
-            - If the page contains a figure, write a figure legend for the figure.
-            - If the page contains a table, write a table legend for the table. Formulate the tables in markdown format."""
+            - If the page contains a figure, write a complete figure legend explaining the figure.
+            - If the page contains a table, write a complete table legend explaining the table. Formulate the tables in markdown format."""
         }
 
         prompt = (f"{general_guidelines}\n\n{specific_guidelines.get(chapter_type, '')}"
@@ -153,7 +153,7 @@ class ChapterGenerator:
         
         # Apply math formatting as final step
         try:
-            from math_formatter import MathFormatter
+            from ..utils.math_formatter import MathFormatter
             math_formatter = MathFormatter()
             polished_text = math_formatter.format_content(polished_text)
             logger.debug("Applied math formatting to chapter content")
