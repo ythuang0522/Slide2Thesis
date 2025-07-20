@@ -95,6 +95,6 @@ def get_default_models() -> dict[str, str]:
         Dictionary mapping provider names to default model names.
     """
     return {
-        'gemini': 'gemini-2.5-pro-preview-06-05',
-        'openai': 'gpt-4.1'
+        'gemini': 'gemini-2.5-pro',
+        'openai': 'o4-mini'
     } 

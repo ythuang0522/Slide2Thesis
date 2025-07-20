@@ -54,4 +54,7 @@ Thumbs.db
 *.swo
 
 # Test data
-Test data/ 
+Test data/
+
+# Generated output files
+Data/ 

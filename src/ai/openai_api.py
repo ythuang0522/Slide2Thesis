@@ -95,9 +95,10 @@ class OpenAIAPI(AIAPIInterface):
                 ]
                 response = self.client.chat.completions.create(
                     model=self.model,
+                    reasoning_effort="high",
                     messages=messages,
                 )
-                time.sleep(1)
+
                 return response.choices[0].message.content if response.choices else None
         except Exception as e:
             logger.error(f"OpenAI API call failed: {e}")

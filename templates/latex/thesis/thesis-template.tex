@@ -54,6 +54,20 @@
 \def\real#1{#1}
 \makeatother
 
+% Define pandoc-generated list commands
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Define other common pandoc commands that might be missing
+\providecommand{\passthrough}[1]{#1}
+\providecommand{\BeginKnitrBlock}[1]{}
+\providecommand{\EndKnitrBlock}[1]{}
+
+% Handle pandoc's CSL citations if they appear
+\newcommand{\cslhangindent}[1]{}
+\newcommand{\cslentryspacingunit}[1]{}
+\newcommand{\cslreferences}[2]{}
+
 % Traditional LaTeX bibliography - no CSL at all
 % Load natbib for better citation support
 \usepackage[numbers,sort&compress]{natbib}

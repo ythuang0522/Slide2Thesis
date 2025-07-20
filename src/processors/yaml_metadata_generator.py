@@ -106,19 +106,23 @@ class YamlMetadataGenerator:
         chinese_abstract = self.ai_api.generate_content(chinese_prompt)
         return chinese_abstract if chinese_abstract else "中文摘要生成失敗。"
         
-    def generate_acknowledgements(self) -> str:
+    def generate_acknowledgements(self, advisor_name: str = None) -> str:
         """Generate Traditional Chinese acknowledgements.
         
         Args:
-            author: Author's name
-            advisor: Advisor's name  
-            chapters_content: Dictionary mapping chapter types to their content
+            advisor_name: Name of the advisor/professor
             
         Returns:
             Traditional Chinese acknowledgements text
         """
+        advisor_info = ""
+        if advisor_name:
+            advisor_info = f"The advisor's name is: {advisor_name}. Please use this specific name when thanking the advisor."
+        
         acknowledgements_prompt = f"""You are a world-class acknowledgements writer specializing in Traditional Chinese. 
-        Please write a heartfelt acknowledgements section (誌謝) in Traditional Chinese for a student who is about to graduate.
+        Write a heartfelt acknowledgements section (誌謝) in Traditional Chinese for a master student about to graduate.
+
+        {advisor_info}
 
         The acknowledgements should:
         1. Express sincere gratitude to the advisor for guidance and support
@@ -126,8 +130,8 @@ class YamlMetadataGenerator:
         3. Acknowledge classmates, lab members, or colleagues who helped
         4. Thank the institution/university for providing resources
         5. Be approximately 200-300 words in Traditional Chinese
-        6. Use heartfelt and touching tone for a student who is about to graduate
-        7. You may include some imentions of research guidance, personal growth, and friendship development.
+        6. Use heartfelt and touching tone
+        7. You may include some mentions of research guidance, personal growth, and friendship development.
 
         Please write ONLY the acknowledgements content in Traditional Chinese, without any title or additional commentary.
         The text should be suitable for direct inclusion in a thesis document."""
@@ -184,17 +188,17 @@ class YamlMetadataGenerator:
                 with open(intro_file, 'r', encoding='utf-8') as f:
                     intro_content = f.read()
             
-            # Run metadata extraction, acknowledgements, and abstract generation in parallel
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            # First extract metadata to get advisor name
+            metadata = self.extract_metadata_from_intro(intro_content)
+            logger.debug(metadata)
+            
+            # Run acknowledgements and abstract generation in parallel, using the extracted advisor name
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 # Submit tasks
-                metadata_future = executor.submit(self.extract_metadata_from_intro, intro_content)
-                acknowledgements_future = executor.submit(self.generate_acknowledgements)
+                acknowledgements_future = executor.submit(self.generate_acknowledgements, metadata.get('advisor'))
                 abstract_future = executor.submit(self.generate_english_abstract, chapters_content)
                 
                 # Get results
-                metadata = metadata_future.result()
-                logger.debug(metadata)
-                
                 acknowledgements = acknowledgements_future.result()
                 logger.info("Generated Chinese acknowledgements")
                 logger.debug(acknowledgements)

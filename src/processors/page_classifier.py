@@ -85,7 +85,7 @@ class PageClassifier:
         Unrelated: [page numbers]
 
         Consider:
-        1. Pages of the same category typically have continuous page numbers
+        1. Pages of the same category typically have continuous page numbers. The classification is like partitioning the pages into categories.
         2. Each page must be classified into exactly one category
         3. If uncertain, classify with adjacent pages' category (e.g., if the page is between two pages of the Methods category, classify it as the Methods category)
         4. If the page is clearly unrelated to any category (e.g., a thank you slide), classify it as Unrelated. No that the slides in the middle must not be classified as Unrelated.

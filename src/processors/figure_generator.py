@@ -383,9 +383,8 @@ class FigureGenerator:
             "figure_references": [
                 {{
                     "sentence": "exact sentence from text",
-                    "reason": "brief reason why this sentence should reference a figure",
                     "figure_filename": "page_X.jpg",
-                    "figure_caption": "A descriptive caption for this figure"
+                    "figure_legend": "A thorough and descriptive legend for this figure"
                 }}
             ]
         }}
@@ -563,7 +562,7 @@ class FigureGenerator:
                 for entry in figure_data.get("figure_references", []):
                     sentence = entry["sentence"].strip()
                     figure_filename = entry["figure_filename"]
-                    figure_caption = entry["figure_caption"]
+                    figure_legend = entry["figure_legend"]
                     
                     # Skip if sentence not in this paragraph
                     if sentence not in paragraph:
@@ -639,7 +638,7 @@ class FigureGenerator:
                     
                     # Add figure to this paragraph's figure list if not already inserted elsewhere
                     if figure_filename not in inserted_figures:
-                        figure_markdown = f"\n\n![{figure_caption}]({figure_filename}){{#fig:{figure_id}}}\n"
+                        figure_markdown = f"\n\n![{figure_legend}]({figure_filename}){{#fig:{figure_id}}}\n"
                         paragraph_figure_list.append(figure_markdown)
                         inserted_figures.add(figure_filename)
                 

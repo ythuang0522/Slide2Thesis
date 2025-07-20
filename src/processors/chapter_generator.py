@@ -140,7 +140,7 @@ class ChapterGenerator:
         7. Ensure the writing flows naturally between sections
         8. Remove apparent editing artifacts (e.g., "Here's the expanded chapter text")
 
-        Please return the polished chapter text in markdown format.
+        Return the polished chapter text in markdown format.
 
         Chapter content to polish:
         {chapter_text}"""

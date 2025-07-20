@@ -32,6 +32,9 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
     if not os.path.exists(pdf_file):
         logger.error(f"PDF file not found: {pdf_file}")
         raise FileNotFoundError(f"PDF file not found: {pdf_file}")
+    if not pdf_file.lower().endswith('.pdf'):
+        logger.error(f"Input file is not a PDF: {pdf_file}")
+        raise ValueError(f"Input file is not a PDF: {pdf_file}")
 
     # Set up paths
     debug_folder = setup_debug_folder(pdf_file)
