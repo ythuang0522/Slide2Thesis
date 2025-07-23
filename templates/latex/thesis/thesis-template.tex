@@ -13,11 +13,15 @@
   \IfFontExistsTF{PingFang TC}{
     \setCJKmainfont{PingFang TC}    % macOS default  
   }{
-    \IfFontExistsTF{SimSun}{
-      \setCJKmainfont{SimSun}       % Windows fallback
+    \IfFontExistsTF{Noto Serif CJK TC}{
+      \setCJKmainfont{Noto Serif CJK TC} % Linux default
     }{
-      % Let xeCJK auto-detect any available CJK font
-      \xeCJKsetup{AutoFakeBold=true, AutoFakeSlant=true}
+      \IfFontExistsTF{SimSun}{
+        \setCJKmainfont{SimSun}       % Windows fallback
+      }{
+        % Let xeCJK auto-detect any available CJK font
+        \xeCJKsetup{AutoFakeBold=true, AutoFakeSlant=true}
+      }
     }
   }
 }
