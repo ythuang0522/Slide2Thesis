@@ -7,6 +7,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from Bio import Entrez
 import time
 from ..ai.ai_api_interface import AIAPIInterface
+import urllib.request
+import urllib.parse
+import urllib.error
 
 # Set up logging
 logging.basicConfig(
@@ -18,7 +21,7 @@ logger = logging.getLogger(__name__)
 class CitationGenerator:
     """Generates and manages citations for thesis chapters."""
     
-    def __init__(self, ai_api: AIAPIInterface, email: str):
+    def __init__(self, ai_api: AIAPIInterface, email: str, google_api_key: str, google_engine_id: str):
         """Initialize the CitationGenerator.
         
         Args:
@@ -27,6 +30,8 @@ class CitationGenerator:
         """
         self.ai_api = ai_api
         Entrez.email = email
+        self.google_api_key = google_api_key
+        self.google_engine_id = google_engine_id
         
     def process_chapters(self, debug_folder: str, threads: int = 1) -> bool:
         """Process all chapter files in the debug folder and add citations.
@@ -244,10 +249,16 @@ class CitationGenerator:
             List of paper details for this sentence
         """
         papers = []
-        query = " ".join(entry["key_terms"]) + " [Title/Abstract]"
-        logger.info(f"Querying PubMed for sentence: '{query}'")
         
-        pmids = self._search_pubmed(query, max_results)
+        if self.google_api_key and self.google_engine_id:
+            query = " ".join(entry["key_terms"])
+            logger.info(f"Querying Google Custom Search for sentence: '{query}'")
+            pmids = self._google_search_pubmed(query, max_results)
+        else:
+            query = " ".join(entry["key_terms"]) + " [Title/Abstract]"
+            logger.info(f"Querying PubMed for sentence: '{query}'")
+            pmids = self._search_pubmed(query, max_results)
+
         if not pmids:
             logger.warning(f"No results found for query: {query}")
             return papers
@@ -305,6 +316,80 @@ class CitationGenerator:
         except Exception as e:
             logger.error(f"PubMed search error: {e}")
             return []
+
+    def _google_search_pubmed(self, query: str, max_results: int) -> List[str]:
+        """Search PubMed using Google Custom Search API.
+        
+        Args:
+            query: Search query
+            max_results: Maximum number of results
+            
+        Returns:
+            List of PubMed IDs
+        """
+        # Construct PubMed-specific query
+        pubmed_query = f"{query} site:pubmed.ncbi.nlm.nih.gov"
+        
+        url = "https://www.googleapis.com/customsearch/v1"
+        params = {
+            "key": self.google_api_key,
+            "cx": self.google_engine_id,
+            "q": pubmed_query,
+            "num": min(max_results, 10)  # Google CSE API limit is 10 per request
+        }
+        
+        try:
+            # Build URL with query parameters
+            query_string = urllib.parse.urlencode(params)
+            full_url = f"{url}?{query_string}"
+            
+            # Make the request
+            with urllib.request.urlopen(full_url) as response:
+                data = json.loads(response.read().decode('utf-8'))
+            
+            pmids = []
+            if "items" in data:
+                for item in data["items"]:
+                    # Extract PMID from URL
+                    url = item.get("link", "")
+                    pmid = self._extract_pmid_from_url(url)
+                    if pmid:
+                        pmids.append(pmid)
+                        if len(pmids) >= max_results:
+                            break
+            return pmids
+            
+        except (urllib.error.URLError, urllib.error.HTTPError) as e:
+            logger.error(f"Google search request failed: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Google search error: {e}")
+            return []
+    
+    def _extract_pmid_from_url(self, url: str) -> Optional[str]:
+        """Extract PubMed ID from a PubMed URL.
+        
+        Args:
+            url: PubMed URL
+            
+        Returns:
+            PubMed ID if found, None otherwise
+        """
+        import re
+        
+        # Common PubMed URL patterns
+        patterns = [
+            r'pubmed\.ncbi\.nlm\.nih\.gov/(\d+)',  # /12345678
+            r'pubmed\.ncbi\.nlm\.nih\.gov/\?term=(\d+)',  # ?term=12345678
+            r'pubmed\.ncbi\.nlm\.nih\.gov/\?linkname=pubmed_pubmed&from_uid=(\d+)',  # from_uid=12345678
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, url)
+            if match:
+                return match.group(1)
+        
+        return None
             
     def _fetch_paper_details(self, pmid: str) -> Optional[Dict]:
         """Fetch paper metadata from PubMed.

@@ -51,6 +51,8 @@ def upload_file():
     file = request.files['pdf_file']
     api_key = request.form.get('api_key', '')
     email = request.form.get('email', '')
+    google_api_key = request.form.get('google_api_key', '')
+    google_engine_id = request.form.get('google_engine_id', '')
     
     if file.filename == '':
         flash('No selected file')
@@ -85,7 +87,7 @@ def upload_file():
         # Start processing in a background thread
         thread = threading.Thread(
             target=process_pdf_background,
-            args=(job_id, file_path, api_key, email)
+            args=(job_id, file_path, api_key, email, google_api_key, google_engine_id)
         )
         thread.daemon = True
         thread.start()
@@ -95,7 +97,7 @@ def upload_file():
     flash('Invalid file type. Please upload a PDF file.')
     return redirect(request.url)
 
-def process_pdf_background(job_id, file_path, api_key, email):
+def process_pdf_background(job_id, file_path, api_key, email, google_api_key, google_engine_id):
     try:
         # Get the debug folder path
         pdf_basename = os.path.splitext(os.path.basename(file_path))[0]
@@ -154,7 +156,7 @@ def process_pdf_background(job_id, file_path, api_key, email):
             
             # Step 4: Add citations
             jobs[job_id]['message'] = "Step 4: Adding citations to chapters..."
-            citation_gen = CitationGenerator(ai_api, email)
+            citation_gen = CitationGenerator(ai_api, email, google_api_key, google_engine_id)
             if not citation_gen.process_chapters(debug_folder, threads=4):
                 raise RuntimeError("Citation generation failed")
             update_status_from_logs()

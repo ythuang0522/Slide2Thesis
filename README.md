@@ -75,7 +75,7 @@ The system follows a streamlined 7-step pipeline:
 1. **📝 Text Extraction**: Extracts text content from each PDF page
 2. **🏷️ Page Classification**: Uses AI to categorize pages into thesis sections
 3. **📚 Chapter Generation**: Converts classified content into well-structured chapters
-4. **📖 Citation Addition**: Automatically adds relevant academic citations via PubMed
+4. **📖 Citation Addition**: Automatically adds relevant academic citations via PubMed API or Google Custom Search for enhanced results
 5. **🖼️ Figure Integration**: Adds figure references and captions to chapters
 6. **📋 Metadata Creation**: Generates YAML metadata for the thesis document
 7. **🔨 PDF Compilation**: Compiles everything into a final PDF using Pandoc + Tectonic with **traditional LaTeX bibliography**
@@ -84,7 +84,7 @@ The diagram uses modern styling with:
 - **Blue**: Input (PDF slides)
 - **Purple**: Core processing steps
 - **Green**: Final output (thesis)
-- **Orange**: External APIs (AI & PubMed)
+- **Orange**: External APIs (AI, PubMed & Google Search)
 
 The system supports both web interface and command-line interface with flexible AI provider support (Gemini/OpenAI).
 
@@ -155,6 +155,8 @@ Output Style:
   
 Processing Options:
   -e EMAIL, --email EMAIL     Email for PubMed API (or set PUBMED_EMAIL in .env)
+  --google-api-key KEY        Google Custom Search API key (or set GOOGLE_API_KEY in .env)
+  --google-engine-id ENGINE_ID        Google Custom Search Engine ID (or set GOOGLE_ENGINE_ID in .env)
   -t THREADS, --threads THREADS  Number of concurrent threads (default: 6)
   
 Step Selection (if none specified, runs all steps):
@@ -225,6 +227,8 @@ python main.py presentation.pdf \
   --model gemini-1.5-flash \
   --gemini-api-key YOUR_GEMINI_KEY \
   --email your.email@domain.com \
+  --google-api-key YOUR_GOOGLE_SEARCH_API_KEY \
+  --google-engine-id YOUR_GOOGLE_ENGINE_ID \
   --threads 8 \
   --verbose
 
@@ -264,7 +268,7 @@ Then open your browser and navigate to http://127.0.0.1:5000 to access the web i
 - `text_extractor.py`: Extracts text from PDF presentations
 - `page_classifier.py`: Categorizes pages into logical sections
 - `chapter_generator.py`: Generates structured content chapters
-- `citation_generator.py`: Adds relevant citations via PubMed API
+- `citation_generator.py`: Adds relevant citations via PubMed API or Google search for PubMed
 - `figure_generator.py`: Processes and references figures
 - `yaml_metadata_generator.py`: Creates style-specific YAML metadata
 - `thesis_compiler.py`: Compiles the final document using traditional LaTeX bibliography
