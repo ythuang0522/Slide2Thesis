@@ -227,7 +227,7 @@ python main.py presentation.pdf \
   --model gemini-1.5-flash \
   --gemini-api-key YOUR_GEMINI_KEY \
   --email your.email@domain.com \
-  --google-api-key YOUR_GOOGLE_SEARCH_API_KEY \
+  --google-api-key YOUR_GOOGLE_API_KEY \
   --google-engine-id YOUR_GOOGLE_ENGINE_ID \
   --threads 8 \
   --verbose

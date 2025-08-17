@@ -446,7 +446,15 @@ class CitationGenerator:
                         doi = aid.split(" [doi]")[0]
                         break
             
-            return {
+            # Get volume and number if available
+            volume = None
+            number = None
+            if "VI" in record:
+                volume = record.get("VI", "").strip()
+            if "IP" in record:
+                number = record.get("IP", "").strip()
+            
+            paper_data = {
                 "pmid": pmid,
                 "title": record.get("TI", "No title"),
                 "authors": authors,
@@ -454,6 +462,14 @@ class CitationGenerator:
                 "year": year,
                 "doi": doi
             }
+            
+            # Only add volume and number if they exist and are not empty
+            if volume:
+                paper_data["volume"] = volume
+            if number:
+                paper_data["number"] = number
+                
+            return paper_data
         except Exception as e:
             logger.error(f"Error fetching PMID {pmid}: {e}")
             return None
@@ -566,12 +582,16 @@ class CitationGenerator:
                                    .replace("}", "\\}"))
         
         doi_field = f"  doi = {{{paper['doi']}}},\n" if paper['doi'] != "Not available" else ""
+        volume_field = f"  volume = {{{paper['volume']}}},\n" if 'volume' in paper else ""
+        number_field = f"  number = {{{paper['number']}}},\n" if 'number' in paper else ""
         
         return (f"@article{{{key},\n"
                 f"  author = {{{author_str}}},\n"
                 f"  title = {{{title}}},\n"
                 f"  journal = {{{journal}}},\n"
                 f"  year = {{{paper['year']}}},\n"
+                f"{volume_field}"
+                f"{number_field}"
                 f"{doi_field}"
                 f"  pmid = {{{paper['pmid']}}}\n"
                 f"}}")

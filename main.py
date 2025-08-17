@@ -49,11 +49,11 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
         raise ValueError("No email provided for PubMed API")
     
     # Check for Google API credentials (optional, for enhanced search)
-    google_api_key = google_api_key or os.getenv('GOOGLE_SEARCH_API_KEY')
+    google_api_key = google_api_key or os.getenv('GOOGLE_API_KEY')
     google_engine_id = google_engine_id or os.getenv('GOOGLE_ENGINE_ID')
     if not google_api_key or not google_engine_id:
         logger.warning("Google API credentials not found. Google search will be disabled.")
-        logger.info("To enable Google search, set GOOGLE_SEARCH_API_KEY and GOOGLE_ENGINE_ID environment variables.")
+        logger.info("To enable Google search, set GOOGLE_API_KEY and GOOGLE_ENGINE_ID environment variables.")
     
     # Create AI API instance using factory
     ai_api = create_ai_api(
@@ -202,7 +202,7 @@ def main():
     
     # Other arguments
     parser.add_argument('-e', '--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
-    parser.add_argument('--google-api-key', help='Google Custom Search API key (optional if GOOGLE_SEARCH_API_KEY is set in .env)')
+    parser.add_argument('--google-api-key', help='Google Custom Search API key (optional if GOOGLE_API_KEY is set in .env)')
     parser.add_argument('--google-engine-id', help='Google Custom Search Engine ID (optional if GOOGLE_ENGINE_ID is set in .env)')
     parser.add_argument('-t', '--threads', type=int, default=6, help='Number of threads for concurrent processing (default: 6)')
     parser.add_argument('--crop-top-pixels', type=int, default=245, help='Number of pixels to crop from top of images (default: 240, no cropping)')
