@@ -24,7 +24,7 @@ def setup_debug_folder(pdf_path: str) -> str:
     return debug_folder
 
 def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai_api_key=None, 
-               email=None, threads=1, style='thesis', crop_top_pixels=240, run_all=True, extract_text=False, 
+               email=None, google_api_key=None, google_engine_id=None, threads=1, style='thesis', crop_top_pixels=240, run_all=True, extract_text=False, 
                categorize_pages=False, generate_chapters=False, add_citations=False, 
                add_figures=False, generate_yaml=False, compile_thesis=False):
     """Process a PDF file and return the path to the debug folder."""
@@ -47,6 +47,13 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
     if not email:
         logger.error("No email provided for PubMed API")
         raise ValueError("No email provided for PubMed API")
+    
+    # Check for Google API credentials (optional, for enhanced search)
+    google_api_key = google_api_key or os.getenv('GOOGLE_SEARCH_API_KEY')
+    google_engine_id = google_engine_id or os.getenv('GOOGLE_ENGINE_ID')
+    if not google_api_key or not google_engine_id:
+        logger.warning("Google API credentials not found. Google search will be disabled.")
+        logger.info("To enable Google search, set GOOGLE_SEARCH_API_KEY and GOOGLE_ENGINE_ID environment variables.")
     
     # Create AI API instance using factory
     ai_api = create_ai_api(
@@ -82,7 +89,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
             raise RuntimeError("Chapter generation failed")
 
         logger.info("Step 4: Adding citations to chapters...")
-        citation_gen = CitationGenerator(ai_api, email)
+        citation_gen = CitationGenerator(ai_api, email, google_api_key, google_engine_id)
         if not citation_gen.process_chapters(debug_folder, threads=threads):
             logger.error("Citation generation failed")
             raise RuntimeError("Citation generation failed")
@@ -137,7 +144,7 @@ def process_pdf(pdf_file, provider=None, model=None, gemini_api_key=None, openai
             
         if add_citations:
             logger.info("Step 4: Adding citations to chapters...")
-            citation_gen = CitationGenerator(ai_api, email)
+            citation_gen = CitationGenerator(ai_api, email, google_api_key, google_engine_id)
             if not citation_gen.process_chapters(debug_folder, threads=threads):
                 logger.error("Citation generation failed")
                 raise RuntimeError("Citation generation failed")
@@ -195,6 +202,8 @@ def main():
     
     # Other arguments
     parser.add_argument('-e', '--email', help='Email for PubMed API (optional if PUBMED_EMAIL is set in .env)')
+    parser.add_argument('--google-api-key', help='Google Custom Search API key (optional if GOOGLE_SEARCH_API_KEY is set in .env)')
+    parser.add_argument('--google-engine-id', help='Google Custom Search Engine ID (optional if GOOGLE_ENGINE_ID is set in .env)')
     parser.add_argument('-t', '--threads', type=int, default=6, help='Number of threads for concurrent processing (default: 6)')
     parser.add_argument('--crop-top-pixels', type=int, default=245, help='Number of pixels to crop from top of images (default: 240, no cropping)')
 
@@ -247,6 +256,8 @@ def main():
             gemini_api_key=args.gemini_api_key,
             openai_api_key=args.openai_api_key,
             email=args.email,
+            google_api_key=args.google_api_key,
+            google_engine_id=args.google_engine_id,
             threads=args.threads,
             style=args.style,
             crop_top_pixels=args.crop_top_pixels,
