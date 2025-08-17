@@ -4,89 +4,13 @@ A tool that automatically generates academic documents (thesis or journal papers
 
 ## Features
 
-- **Multi-Style Support**: Generate documents in different academic formats:
-  - **Thesis format**: Traditional university thesis with chapters
-  - **Nature journal format**: Scientific journal papers (Nature, Science, etc.)
+- Multi-Style Support: Generate documents in different academic formats:
 - Extract text and images from PDF slides
 - Generate structured content from slide material
 - Add citations and references using traditional LaTeX bibliography
 - Generate figures and tables with proper referencing
 - Compile complete academic documents in PDF format
 - Web interface for uploading and processing
-
-## System Architecture
-
-The following flowchart illustrates the component flow and processing pipeline of Slide2Thesis:
-
-```mermaid
-flowchart LR
-    A[📄 PDF Slides] --> B[🤖 Gemini/ChatGPT API]
-    B --> C[📝 Text Extraction]
-    C --> D[🏷️ Page Classification]
-    D --> E[📚 Chapter Generation]
-    E --> F[📖 Citation Addition]
-    F --> G[🖼️ Figure Integration]
-    G --> H[📋 Metadata Creation]
-    H --> I[🔨 PDF Compilation]
-    I --> J[📖 Final Thesis]
-
-    subgraph inputs [" "]
-        A
-        K[📧 PubMed API]
-    end
-
-    subgraph processing ["🔄 Core Pipeline"]
-        C
-        D
-        E
-        F
-        G
-        H
-        I
-    end
-
-    subgraph outputs [" "]
-        J
-    end
-
-    F -.-> K
-    B -.-> C
-    B -.-> D
-    B -.-> E
-    B -.-> F
-    B -.-> G
-    B -.-> H
-
-    classDef inputStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000,font-size:24px,font-weight:bold
-    classDef processStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000,font-size:24px,font-weight:bold
-    classDef outputStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:3px,color:#000,font-size:24px,font-weight:bold
-    classDef apiStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000,font-size:24px,font-weight:bold
-
-    class A inputStyle
-    class C,D,E,F,G,H,I processStyle
-    class J outputStyle
-    class B,K apiStyle
-```
-
-### Processing Pipeline
-
-The system follows a streamlined 7-step pipeline:
-
-1. **📝 Text Extraction**: Extracts text content from each PDF page
-2. **🏷️ Page Classification**: Uses AI to categorize pages into thesis sections
-3. **📚 Chapter Generation**: Converts classified content into well-structured chapters
-4. **📖 Citation Addition**: Automatically adds relevant academic citations via PubMed API or Google Custom Search for enhanced results
-5. **🖼️ Figure Integration**: Adds figure references and captions to chapters
-6. **📋 Metadata Creation**: Generates YAML metadata for the thesis document
-7. **🔨 PDF Compilation**: Compiles everything into a final PDF using Pandoc + Tectonic with **traditional LaTeX bibliography**
-
-The diagram uses modern styling with:
-- **Blue**: Input (PDF slides)
-- **Purple**: Core processing steps
-- **Green**: Final output (thesis)
-- **Orange**: External APIs (AI, PubMed & Google Search)
-
-The system supports both web interface and command-line interface with flexible AI provider support (Gemini/OpenAI).
 
 ## Installation
 
@@ -112,6 +36,38 @@ The system supports both web interface and command-line interface with flexible 
    # For Linux (Debian/Ubuntu)
    sudo apt-get install pandoc-crossref   
    ```
+
+## Environment Configuration
+
+Create a `.env` file in the project root directory to store your API keys and configuration settings. 
+
+
+### .env Example
+```bash
+# Gemini API Key (Recommended)
+GEMINI_API_KEY=AIzaSyC...
+# OpenAI API Key (required only if you want to use OpenAI models)
+OPENAI_API_KEY=sk-...
+
+# Google Custom Search Engine (Recommended for searching better citations)
+GOOGLE_API_KEY=AIzaSyC...
+GOOGLE_ENGINE_ID=012345678901234567890:abcdefghijk
+
+# Use PubMed search instead if Google Search Engine is not set up
+PUBMED_EMAIL=researcher@university.edu
+```
+
+### Getting API Keys
+
+Go to [Google AI Studio](https://makersuite.google.com/app/apikey) and/or [OpenAI Platform](https://platform.openai.com/api-keys). For Google Custom Search API,
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Enable the Custom Search API
+3. Create credentials (API Key)
+4. Go to [Google Programmable Search Engine](https://programmablesearchengine.google.com/)
+5. Create a new search engine
+6. Copy the Search Engine ID to your `.env` file
+
 
 ## Usage
 
@@ -309,6 +265,81 @@ The system is designed to be easily extensible with new academic formats. To add
 4. **Add metadata generation** (if needed) in `yaml_metadata_generator.py`
 
 The style system automatically handles file copying and pandoc configuration.
+
+
+## System Architecture
+
+The following flowchart illustrates the component flow and processing pipeline of Slide2Thesis:
+
+```mermaid
+flowchart LR
+    A[📄 PDF Slides] --> B[🤖 Gemini/ChatGPT API]
+    B --> C[📝 Text Extraction]
+    C --> D[🏷️ Page Classification]
+    D --> E[📚 Chapter Generation]
+    E --> F[📖 Citation Addition]
+    F --> G[🖼️ Figure Integration]
+    G --> H[📋 Metadata Creation]
+    H --> I[🔨 PDF Compilation]
+    I --> J[📖 Final Thesis]
+
+    subgraph inputs [" "]
+        A
+        K[📧 PubMed API]
+    end
+
+    subgraph processing ["🔄 Core Pipeline"]
+        C
+        D
+        E
+        F
+        G
+        H
+        I
+    end
+
+    subgraph outputs [" "]
+        J
+    end
+
+    F -.-> K
+    B -.-> C
+    B -.-> D
+    B -.-> E
+    B -.-> F
+    B -.-> G
+    B -.-> H
+
+    classDef inputStyle fill:#e3f2fd,stroke:#1976d2,stroke-width:3px,color:#000,font-size:24px,font-weight:bold
+    classDef processStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000,font-size:24px,font-weight:bold
+    classDef outputStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:3px,color:#000,font-size:24px,font-weight:bold
+    classDef apiStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000,font-size:24px,font-weight:bold
+
+    class A inputStyle
+    class C,D,E,F,G,H,I processStyle
+    class J outputStyle
+    class B,K apiStyle
+```
+
+### Processing Pipeline
+
+The system follows a streamlined 7-step pipeline:
+
+1. **📝 Text Extraction**: Extracts text content from each PDF page
+2. **🏷️ Page Classification**: Uses AI to categorize pages into thesis sections
+3. **📚 Chapter Generation**: Converts classified content into well-structured chapters
+4. **📖 Citation Addition**: Automatically adds relevant academic citations via PubMed API or Google Custom Search for enhanced results
+5. **🖼️ Figure Integration**: Adds figure references and captions to chapters
+6. **📋 Metadata Creation**: Generates YAML metadata for the thesis document
+7. **🔨 PDF Compilation**: Compiles everything into a final PDF using Pandoc + Tectonic with **traditional LaTeX bibliography**
+
+The diagram uses modern styling with:
+- **Blue**: Input (PDF slides)
+- **Purple**: Core processing steps
+- **Green**: Final output (thesis)
+- **Orange**: External APIs (AI, PubMed & Google Search)
+
+The system supports both web interface and command-line interface with flexible AI provider support (Gemini/OpenAI).
 
 ## License
 
